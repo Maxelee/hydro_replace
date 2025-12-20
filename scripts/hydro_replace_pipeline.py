@@ -177,9 +177,14 @@ class PipelineConfig:
     save_maps: bool = True
     save_pk: bool = True
     save_profiles: bool = True
+    save_lens_planes: bool = True  # Save 2D projected lens planes for lux
     grid_resolution: int = 4096
     profile_bins: int = 100
     profile_rmax: float = 5.0  # Max radius in units of R_200
+    
+    # Lens plane projection options
+    planes_per_snapshot: int = 2  # Number of lens planes per snapshot
+    projection_seed: int = 2020  # Random seed for projection transforms
     
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PipelineConfig':
@@ -243,7 +248,7 @@ class HydroReplacePipeline:
             (mode_dir / "maps").mkdir(parents=True, exist_ok=True)
             (mode_dir / "power_spectra").mkdir(parents=True, exist_ok=True)
             (mode_dir / "profiles").mkdir(parents=True, exist_ok=True)
-            (mode_dir / "lux_input").mkdir(parents=True, exist_ok=True)
+            (mode_dir / "lens_planes").mkdir(parents=True, exist_ok=True)
             (mode_dir / "kappa_maps").mkdir(parents=True, exist_ok=True)
             
             self.output_base = mode_dir
@@ -331,8 +336,9 @@ class HydroReplacePipeline:
             # For bcm/replace modes, compute profiles from modified particles
             self.save_halo_profiles(modified, matched_halos, snap_num)
         
-        # 4. Write lux input (modified snapshot in TNG-compatible format)
-        self.write_lux_input(modified, snap_num)
+        # 4. Create lens planes for lux (efficient 2D projection)
+        if self.config.save_lens_planes:
+            self.save_lens_planes(modified, snap_num)
     
     # =========================================================================
     # Data Loading
@@ -866,6 +872,67 @@ class HydroReplacePipeline:
                            compression='gzip', compression_opts=4)
         
         logger.info(f"    Saved {n_halos} halo profiles to {outfile}")
+    
+    def save_lens_planes(self, particles: Dict, snap_num: int):
+        """
+        Project particles to 2D lens planes for lux ray-tracing.
+        
+        This creates pre-projected density maps that can be used by lux
+        (or a modified version) instead of reading full 3D particle data.
+        
+        Much more efficient for high-resolution simulations as we only
+        need to write 2D maps (4096^2 × 2 planes) instead of billions of
+        particle positions.
+        
+        Output format matches lux's internal density field format.
+        """
+        from hydro_replace.projection import LensPlaneConfig, LensPlaneProjector
+        
+        logger.info(f"    Creating lens planes for lux...")
+        
+        # Get redshift
+        try:
+            header = load_snapshot_header(self.config.dmo_basepath, snap_num)
+            redshift = header['Redshift']
+        except:
+            redshift = 0.0
+        
+        # Determine if we should stack (for low-z snapshots)
+        # Typically stack for z < 0.5 (snap < 52 for TNG)
+        stack = snap_num < 52
+        
+        # Configure lens plane projection
+        config = LensPlaneConfig(
+            grid_size=self.config.grid_resolution,
+            planes_per_snapshot=self.config.planes_per_snapshot,
+            box_size=self.config.box_size,
+            random_seed=self.config.projection_seed + snap_num,  # Different seed per snapshot
+            apply_translation=True,
+            apply_rotation=True,
+            apply_flip=True,
+            projection_direction=-1,  # Random
+            stack=stack,
+        )
+        
+        projector = LensPlaneProjector(config)
+        
+        # Project particles to lens planes
+        pos = particles['positions']
+        masses = particles['masses']
+        
+        planes = projector.project_particles(pos, masses)
+        
+        # Convert to density contrast
+        delta_planes = projector.compute_density_contrast(planes)
+        
+        # Save lens planes
+        output_dir = self.output_base / 'lens_planes'
+        projector.save_lens_planes(
+            delta_planes, output_dir, snap_num, 
+            self.config.mode, redshift
+        )
+        
+        logger.info(f"    Created {len(delta_planes)} lens planes")
     
     def write_lux_input(self, particles: Dict, snap_num: int):
         """
