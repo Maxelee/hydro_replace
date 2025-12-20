@@ -105,18 +105,55 @@ except ImportError:
 # Configuration
 # =============================================================================
 
+# TNG resolution configurations
+TNG_RESOLUTIONS = {
+    625: {
+        'dmo': '/mnt/sdceph/users/sgenel/IllustrisTNG/L205n625TNG_DM/output',
+        'hydro': '/mnt/sdceph/users/sgenel/IllustrisTNG/L205n625TNG/output',
+        'n_particles': 625**3,
+        'description': 'Low-res (fast testing)',
+    },
+    1250: {
+        'dmo': '/mnt/sdceph/users/sgenel/IllustrisTNG/L205n1250TNG_DM/output',
+        'hydro': '/mnt/sdceph/users/sgenel/IllustrisTNG/L205n1250TNG/output',
+        'n_particles': 1250**3,
+        'description': 'Medium-res (validation)',
+    },
+    2500: {
+        'dmo': '/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG_DM/output',
+        'hydro': '/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output',
+        'n_particles': 2500**3,
+        'description': 'Full-res (production)',
+    },
+}
+
+
 @dataclass
 class PipelineConfig:
     """Configuration for the hydro replace pipeline."""
     
-    # Paths
-    dmo_basepath: str = "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG_DM/output"
-    hydro_basepath: str = "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output"
+    # Resolution (625, 1250, or 2500)
+    resolution: int = 2500
+    
+    # Paths (set automatically from resolution, or override)
+    dmo_basepath: str = ""
+    hydro_basepath: str = ""
     output_dir: str = "/mnt/home/mlee1/ceph/hydro_replace"
     lux_dir: str = "/mnt/home/mlee1/lux"
     
     # Simulation parameters
     box_size: float = 205.0  # Mpc/h
+    
+    def __post_init__(self):
+        """Set paths based on resolution if not explicitly provided."""
+        if self.resolution not in TNG_RESOLUTIONS:
+            raise ValueError(f"Invalid resolution {self.resolution}. Choose from: {list(TNG_RESOLUTIONS.keys())}")
+        
+        res_config = TNG_RESOLUTIONS[self.resolution]
+        if not self.dmo_basepath:
+            self.dmo_basepath = res_config['dmo']
+        if not self.hydro_basepath:
+            self.hydro_basepath = res_config['hydro']
     
     # Pipeline mode
     mode: str = "replace"  # dmo, hydro, replace, bcm
@@ -716,6 +753,9 @@ class HydroReplacePipeline:
 def parse_args():
     parser = argparse.ArgumentParser(description="Hydro Replace Pipeline")
     
+    parser.add_argument('--resolution', type=int, default=2500,
+                        choices=[625, 1250, 2500],
+                        help='TNG resolution (625=fast test, 1250=validation, 2500=production)')
     parser.add_argument('--mode', type=str, default='replace',
                         choices=['dmo', 'hydro', 'replace', 'bcm'],
                         help='Pipeline mode')
@@ -745,7 +785,7 @@ def main():
     if args.config:
         config = PipelineConfig.from_yaml(args.config)
     else:
-        config = PipelineConfig()
+        config = PipelineConfig(resolution=args.resolution)
     
     # Override with command-line args
     config.mode = args.mode

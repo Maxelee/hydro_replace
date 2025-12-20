@@ -14,11 +14,22 @@
 # =============================================================================
 # Test Hydro Replace Pipeline
 # =============================================================================
-# Quick test on a single snapshot with DMO mode (no halo matching needed)
+# Quick test on a single snapshot with configurable resolution
 #
 # Usage:
+#   # Fast test with lowest resolution (625^3 particles)
 #   sbatch batch/test_pipeline.sh
-#   sbatch --export=MODE=hydro,SNAP=99 batch/test_pipeline.sh
+#
+#   # Medium resolution validation
+#   sbatch --export=RES=1250,MODE=hydro batch/test_pipeline.sh
+#
+#   # Full resolution production
+#   sbatch --export=RES=2500,MODE=replace,SNAP=99 batch/test_pipeline.sh
+#
+# Resolution options:
+#   625  - ~244M particles, fast testing (~minutes)
+#   1250 - ~1.95B particles, validation (~10-30 min)
+#   2500 - ~15.6B particles, production (~hours)
 # =============================================================================
 
 set -e
@@ -36,6 +47,7 @@ cd /mnt/home/mlee1/hydro_replace2
 mkdir -p logs
 
 # Default parameters (can be overridden via --export)
+RES=${RES:-625}           # Start with lowest resolution for testing
 MODE=${MODE:-dmo}
 SNAP=${SNAP:-99}
 MASS_MIN=${MASS_MIN:-1e12}
@@ -47,6 +59,7 @@ echo "Hydro Replace Pipeline Test"
 echo "=============================================="
 echo "Date: $(date)"
 echo "Host: $(hostname)"
+echo "Resolution: ${RES}^3 (L205n${RES}TNG)"
 echo "Mode: $MODE"
 echo "Snapshot: $SNAP"
 echo "Mass range: $MASS_MIN - $MASS_MAX Msun/h"
@@ -55,6 +68,7 @@ echo "=============================================="
 
 # Run pipeline
 python -u scripts/hydro_replace_pipeline.py \
+    --resolution $RES \
     --mode $MODE \
     --snapshot $SNAP \
     --mass-min $MASS_MIN \
