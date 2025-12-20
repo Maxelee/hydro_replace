@@ -86,13 +86,24 @@ For each of 20 snapshots:
 **Pros**: Leverages existing infrastructure  
 **Cons**: Requires lux modification
 
-### Recommended: Option B (Lens Plane Replacement)
+### REVISED: Option D (Direct lux Modification)
 
-The lens planes are 2D projected mass fields. We can:
-1. Compute ΔΣ(θ) = Σ_hydro(θ) - Σ_DMO(θ) for halo regions
-2. Apply replacement: Σ_replaced(θ) = Σ_DMO(θ) + ΔΣ(θ)
+**Decision**: After reviewing existing data products, lens plane replacement is NOT the best approach. Instead, we will:
 
-This matches the pixelization approach already used for z=0.
+1. **Modify lux** to read pre-baryonified snapshot data (HDF5 format)
+2. **Create branch**: `git checkout -b hydro_replace` in `/mnt/home/mlee1/lux/`
+3. **Leverage existing halo-level BCM**: 519 halos already processed with Arico20
+
+**Why this approach?**
+- We already have per-halo BCM outputs (`/mnt/home/mlee1/ceph/baryonification_output/halos/`)
+- Full 3D coordinates preserved (no projection artifacts)
+- Can extend to multiple BCM models without re-running lux
+- Clean separation: BCM processing → snapshot replacement → ray-tracing
+
+**Implementation**:
+1. Write `create_replaced_snapshot.py` that combines BCM halo outputs into full snapshot
+2. Modify `lux/read_hdf.cpp` to read our custom HDF5 format (or convert to TNG-like format)
+3. Run lux on replaced snapshots for each configuration
 
 ---
 
