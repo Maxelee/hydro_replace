@@ -4,19 +4,14 @@
 # This file contains all paths to simulations and output directories.
 # Edit this file to match your system configuration.
 
-# TNG-300 Simulations
-tng300:
-  hydro:
-    basePath: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output"
-    name: "TNG300-1"
+simulations:
+  # TNG-300 Simulations
+  tng300:
+    hydro: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output"
+    dmo: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG_DM/output"
     box_size: 205.0  # Mpc/h
-    dm_particle_mass: 0.00398342749867548  # 10^10 Msun/h
-    
-  dmo:
-    basePath: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG_DM/output"
-    name: "TNG300-1-Dark"
-    box_size: 205.0  # Mpc/h
-    dm_particle_mass: 0.0047271638660809  # 10^10 Msun/h
+    dm_particle_mass_hydro: 0.00398342749867548  # 10^10 Msun/h
+    dm_particle_mass_dmo: 0.0047271638660809  # 10^10 Msun/h
 
 # Public TNG data (alternative paths)
 tng300_public:
