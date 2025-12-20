@@ -1,0 +1,99 @@
+# BCM Model Parameters Configuration
+# Parameters for BaryonForge baryon correction models
+
+# Schneider+2019 model (original BCM)
+schneider19:
+  # Gas profile parameters
+  theta_ej: 4.0        # Ejection radius in units of R_200c
+  theta_co: 0.1        # Core radius in units of R_200c
+  M_c: 1.0e14          # Characteristic mass for gas ejection [Msun/h]
+  gamma: 2.5           # Power-law slope for gas profile
+  delta: 6.0           # Outer slope for gas profile
+  
+  # Star formation parameters
+  A: 0.03              # Stellar mass fraction amplitude
+  eta: 0.2             # Low-mass stellar slope
+  tau: 4.0             # High-mass stellar slope
+  M_1: 1.0e12          # Characteristic stellar mass [Msun/h]
+  epsilon_h: 0.015     # Stellar concentration parameter
+  
+  # DM relaxation parameters
+  epsilon: 1.0         # Relaxation strength
+  a: 0.5               # NFW inner slope modification
+  n: 2.0               # NFW outer slope modification
+
+# Arico+2020 model (TNG-calibrated)
+arico20:
+  # Gas profile parameters (TNG-300 calibrated)
+  M_c: 1.2e14          # Characteristic mass
+  mu: 0.4              # Gas fraction slope
+  theta_out: 4.0       # Outer ejection radius
+  theta_inn: 0.1       # Inner core radius
+  beta: 0.6            # Gas mass fraction slope
+  
+  # Star formation (TNG-calibrated)
+  M1_0: 1.2e12         # Characteristic stellar mass
+  alpha_g: 1.0         # Stellar profile slope
+  epsilon_h: 0.015     # Stellar concentration
+  
+  # Satellite galaxies
+  M1_fsat: 1.0e13
+  eps_fsat: 0.026
+  alpha_fsat: 1.0
+  delta_fsat: 0.57
+  gamma_fsat: 1.12
+
+# Mead+2020 model (HMcode-style)
+mead20:
+  # Gas parameters
+  M_0: 1.0e14          # Characteristic mass
+  beta: 0.6            # Bound gas fraction slope
+  Gamma: 1.17          # Polytropic index
+  eta_b: 0.5           # Ejected gas fraction
+  
+  # Star parameters  
+  A_star: 0.03         # Stellar fraction amplitude
+  M_star: 1.0e12       # Peak stellar mass
+  sigma_star: 1.0      # Stellar mass width
+  
+  # DM modification
+  eps1: 1.0            # Concentration modification
+  eps2: 0.0            # Additional modification
+
+# Schneider+2025 model (latest)
+schneider25:
+  # Hot gas parameters
+  theta_c: 0.1         # Core radius
+  M_c: 1.0e14          # Characteristic mass
+  gamma: 2.0           # Inner slope
+  delta: 7.0           # Outer slope
+  alpha: 1.0           # Transition sharpness
+  
+  # Inner gas parameters
+  theta_i: 0.01        # Inner gas scale
+  M_i: 1.0e13          # Inner gas mass scale
+  
+  # DM relaxation (new parametrization)
+  epsilon0: 1.0
+  epsilon1: 0.0
+  q0: 0.5
+  q1: 0.0
+  nstep: 2.0
+
+# Comparison configurations
+comparison:
+  # Halo mass range for comparison
+  mass_bins:
+    - [1.0e12, 3.16e12]   # 12.0-12.5
+    - [3.16e12, 1.0e13]   # 12.5-13.0
+    - [1.0e13, 3.16e13]   # 13.0-13.5
+    - [3.16e13, 1.0e14]   # 13.5-14.0
+    - [1.0e14, 1.0e15]    # 14.0-15.0
+    
+  # Radial range for profile comparison
+  r_min: 0.01  # In units of R_200c
+  r_max: 10.0  # In units of R_200c
+  n_radii: 100
+  
+  # Redshifts for evolution study
+  redshifts: [0.0, 0.5, 1.0, 1.5, 2.0]

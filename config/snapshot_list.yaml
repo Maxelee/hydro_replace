@@ -1,0 +1,108 @@
+# Snapshot Configuration for Ray-Tracing
+# These are the snapshots used by lux for κTNG-style analysis
+
+# Snapshot list with redshifts and comoving distances
+# From lux.ini and TNG-300 documentation
+
+snapshots:
+  # Low-z snapshots (individual planes)
+  - snap: 99
+    redshift: 0.00
+    stack: false
+    
+  - snap: 96
+    redshift: 0.04
+    stack: false
+    
+  - snap: 90
+    redshift: 0.15
+    stack: false
+    
+  - snap: 85
+    redshift: 0.27
+    stack: false
+    
+  - snap: 80
+    redshift: 0.40
+    stack: false
+    
+  - snap: 76
+    redshift: 0.50
+    stack: false
+    
+  - snap: 71
+    redshift: 0.64
+    stack: false
+    
+  - snap: 67
+    redshift: 0.78
+    stack: false
+    
+  - snap: 63
+    redshift: 0.93
+    stack: false
+    
+  - snap: 59
+    redshift: 1.07
+    stack: false
+    
+  - snap: 56
+    redshift: 1.18
+    stack: false
+    
+  # High-z snapshots (stacked planes, 2× box)
+  - snap: 52
+    redshift: 1.36
+    stack: true
+    
+  - snap: 49
+    redshift: 1.50
+    stack: true
+    
+  - snap: 46
+    redshift: 1.65
+    stack: true
+    
+  - snap: 43
+    redshift: 1.82
+    stack: true
+    
+  - snap: 41
+    redshift: 1.93
+    stack: true
+    
+  - snap: 38
+    redshift: 2.12
+    stack: true
+    
+  - snap: 35
+    redshift: 2.32
+    stack: true
+    
+  - snap: 33
+    redshift: 2.49
+    stack: true
+    
+  - snap: 31
+    redshift: 2.68
+    stack: true
+    
+  - snap: 29
+    redshift: 2.87
+    stack: true
+
+# Subset for testing (5 key redshifts)
+test_snapshots:
+  - snap: 99   # z = 0.00
+  - snap: 76   # z = 0.50
+  - snap: 59   # z = 1.07
+  - snap: 49   # z = 1.50
+  - snap: 38   # z = 2.12
+
+# Lens plane configuration
+lens_planes:
+  grid: 4096
+  planes_per_snapshot: 2
+  field_of_view_deg: 5.0
+  projection_direction: -1  # Random
+  randomization: true
