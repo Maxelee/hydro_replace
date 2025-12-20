@@ -160,7 +160,7 @@ class PipelineConfig:
     
     # Pipeline mode
     mode: str = "replace"  # dmo, hydro, replace, bcm
-    bcm_model: str = "Arico20"  # Arico20, Schneider19, Mead20
+    bcm_model: str = "Arico20"  # Arico20, Schneider19, Schneider25
     
     # Replacement parameters
     mass_min: float = 1e12  # Minimum halo mass [Msun/h]
@@ -1055,8 +1055,8 @@ def parse_args():
                         choices=['dmo', 'hydro', 'replace', 'bcm'],
                         help='Pipeline mode')
     parser.add_argument('--bcm-model', type=str, default='Arico20',
-                        choices=['Arico20', 'Schneider19', 'Mead20'],
-                        help='BCM model (if mode=bcm)')
+                        choices=['Arico20', 'Schneider19', 'Schneider25'],
+                        help='BCM model (if mode=bcm). Available: Arico20, Schneider19, Schneider25')
     parser.add_argument('--snapshot', type=int, default=None,
                         help='Single snapshot to process (for testing)')
     parser.add_argument('--full', action='store_true',
