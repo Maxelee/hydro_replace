@@ -12,6 +12,34 @@ status: active
 
 ---
 
+## EXISTING DATA PRODUCTS (Pre-computed)
+
+**Location**: `/mnt/home/mlee1/ceph/pixelized/`  
+**Total Files**: 61 files (~8.7 GB)
+
+### Pixelized Replacement Maps
+Generated via `extract_and_pixelize_full3D.py` using MPI-parallel cKDTree masking + CIC gridding.
+
+**File Naming**: `pixelized_maps_res{RES}_axis{AXIS}_{MODE}_rad{RADIUS}_mass{MASS_LABEL}.npz`
+
+| Parameter | Values |
+|-----------|--------|
+| Resolution | 4096³ |
+| Axes | 0, 1, 2 |
+| Modes | `normal` (DMO→Hydro), `inverse` (Hydro→DMO) |
+| Radii | 1×, 3×, 5× R_200c |
+| Mass bins (regular) | 10.0-12.5, 12.5-13.0, 13.0-13.5, 13.5-14.0, gt14.0 |
+| Mass bins (cumulative) | gt10.0, gt12.5, gt13.0, gt13.5, gt14.0 |
+
+**Contents per .npz file**:
+- `hydro_density`: 2D projected hydro matter density
+- `dmo_density`: 2D projected DMO matter density  
+- `replaced_density`: DMO with hydro particles swapped in replacement regions
+
+> **Note**: These data products cover a comprehensive parameter scan and can be used directly for power spectrum analysis without re-running extraction.
+
+---
+
 ## PHASE 0: Foundation & Setup (Week 1: Dec 23-29, 2025)
 
 ### Literature & Context Building
@@ -55,6 +83,8 @@ status: active
 - [x] **SETUP-0.3**: Create `simulation_specifications.md` documenting all sim details
 - [x] **SETUP-0.4**: Set up version control: `git init`, `.gitignore` for large data
 - [x] **SETUP-0.5**: Create `README.md` with project overview
+- [x] **SETUP-0.6**: Create `.github/copilot-instructions.md` for AI assistant context
+- [x] **SETUP-0.7**: Create `notebooks/power_by_mass.ipynb` for interactive power spectrum analysis
 
 **→ Deliverable**: Organized workspace ready for analysis
 
@@ -132,7 +162,7 @@ status: active
 - [x] **REPLACE-2.10**: Implement replacement at 5×R_200c (full, main analysis)
 - [x] **REPLACE-2.11**: Document why these radii (Miller comparison + physics)
 - [x] **REPLACE-2.12**: Mass bin strategy: define 6 bins (as above)
-- [ ] **REPLACE-2.13**: Create replacement runs:
+- [x] **REPLACE-2.13**: Create replacement runs:  *(See `/mnt/home/mlee1/ceph/pixelized/` - 61 files covering all mass bins × 3 radii × 2 modes)*
 - Cumulative: all halos M > 10^12
 - By mass bin: 6 separate runs
 - By radius: 3 choices × 6 mass bins = 18 runs (for Paper 1 Fig 7-8)
