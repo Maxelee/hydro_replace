@@ -96,10 +96,13 @@ except ImportError:
 # Import BaryonForge for BCM
 try:
     import BaryonForge as bfg
+    import pyccl as ccl
     HAS_BARYONFORGE = True
 except ImportError:
     HAS_BARYONFORGE = False
-    logger.warning("BaryonForge not found. BCM mode disabled.")
+    bfg = None
+    ccl = None
+    logger.warning("BaryonForge or pyccl not found. BCM mode disabled.")
 
 # =============================================================================
 # Configuration
@@ -505,26 +508,98 @@ class HydroReplacePipeline:
     
     def apply_bcm(self, dmo_particles: Dict, matched_halos: 'MatchedCatalog') -> Dict:
         """
-        Apply BaryonForge BCM to DMO halos.
+        Apply BaryonForge BCM to DMO particles.
         
-        For each halo in the mass range:
-        1. Compute BCM displacement field
-        2. Apply radial displacement to DMO particles
+        Uses the BaryonForge library to compute displacement functions and
+        apply them to particles around halos. This is the proper way to use
+        BCM - it computes M_enc(r) for DMO and DMB profiles, then finds the
+        displacement needed to transform one to the other.
+        
+        BaryonForge workflow:
+        1. Define DMO and DMB (dark matter + baryons) profiles
+        2. Create Baryonification3D model from these profiles
+        3. Setup interpolator for fast displacement lookup
+        4. Create ParticleSnapshot and HaloNDCatalog objects
+        5. Run BaryonifySnapshot to apply displacements
         """
         if not HAS_BARYONFORGE:
-            raise RuntimeError("BaryonForge required for BCM mode. Install with: pip install BaryonForge")
+            raise RuntimeError(
+                "BaryonForge required for BCM mode. Install with: pip install BaryonForge pyccl"
+            )
         
-        logger.info(f"    Applying BCM ({self.config.bcm_model})...")
+        logger.info(f"    Applying BCM ({self.config.bcm_model}) using BaryonForge...")
         
-        # Select BCM model
-        if self.config.bcm_model == 'Arico20':
-            bcm = bfg.Arico20()
-        elif self.config.bcm_model == 'Schneider19':
-            bcm = bfg.Schneider19()
-        elif self.config.bcm_model == 'Mead20':
-            bcm = bfg.Mead20()
+        # Get snapshot redshift for scale factor
+        snap_num = dmo_particles.get('snapshot', 99)
+        header = snapshot.loadHeader(self.config.dmo_basepath, snap_num)
+        redshift = header['Redshift']
+        a = 1.0 / (1.0 + redshift)
+        
+        logger.info(f"    Snapshot {snap_num}: z = {redshift:.3f}, a = {a:.4f}")
+        
+        # Setup CCL cosmology (required by BaryonForge)
+        # TNG-300 cosmology
+        cosmo = ccl.Cosmology(
+            Omega_c=0.3089 - 0.0486,  # Omega_m - Omega_b
+            Omega_b=0.0486,
+            h=0.6774,
+            sigma8=0.8159,
+            n_s=0.9667,
+            matter_power_spectrum='linear'
+        )
+        cosmo.compute_sigma()
+        
+        # BCM model parameters (can be customized)
+        # These are reasonable defaults from BaryonForge
+        if self.config.bcm_model == 'Schneider19':
+            bpar = dict(
+                theta_ej=4, theta_co=0.1, M_c=1e14/0.6774, mu_beta=0.4,
+                eta=0.3, eta_delta=0.3, tau=-1.5, tau_delta=0,
+                epsilon_max=self.config.radius_factor,
+            )
+            DMO = bfg.Profiles.Schneider19.DarkMatterOnly(**bpar)
+            DMB = bfg.Profiles.Schneider19.DarkMatterBaryon(**bpar)
+            
+        elif self.config.bcm_model == 'Schneider25':
+            bpar = dict(
+                theta_ej=4, theta_co=0.1, M_c=1e14/0.6774, mu_beta=0.6,
+                epsilon0=0.25, epsilon1=0,
+                epsilon_max=self.config.radius_factor,
+            )
+            DMO = bfg.Profiles.Schneider25.DarkMatterOnly(**bpar)
+            DMB = bfg.Profiles.Schneider25.DarkMatterBaryon(**bpar)
+            
+        elif self.config.bcm_model == 'Arico20':
+            bpar = dict(
+                M_c=1e14/0.6774, mu=0.4, theta_inn=0.4, theta_out=0.25,
+                M_inn=1e13/0.6774, epsilon_max=self.config.radius_factor,
+            )
+            DMO = bfg.Profiles.Arico20.DarkMatterOnly(**bpar)
+            DMB = bfg.Profiles.Arico20.DarkMatterBaryon(**bpar)
+            
         else:
-            raise ValueError(f"Unknown BCM model: {self.config.bcm_model}")
+            raise ValueError(f"Unknown BCM model: {self.config.bcm_model}. "
+                           f"Choose from: Schneider19, Schneider25, Arico20")
+        
+        # Create 3D Baryonification model
+        logger.info(f"    Setting up Baryonification3D interpolator...")
+        Baryons = bfg.Profiles.Baryonification3D(DMO, DMB, cosmo=cosmo, 
+                                                  epsilon_max=self.config.radius_factor)
+        
+        # Setup interpolator for fast evaluation
+        # This precomputes displacement(r, M, z) on a grid
+        Baryons.setup_interpolator(
+            z_min=max(0.01, redshift - 0.1),
+            z_max=redshift + 0.1,
+            N_samples_z=3,
+            M_min=self.config.mass_min,
+            M_max=self.config.mass_max,
+            N_samples_Mass=30,
+            R_min=1e-3,
+            R_max=self.config.radius_factor * 10,  # Go beyond epsilon_max
+            N_samples_R=200,
+            verbose=(rank == 0),
+        )
         
         # Filter halos by mass
         halos_in_range = matched_halos.filter_by_mass(
@@ -532,55 +607,65 @@ class HydroReplacePipeline:
         )
         logger.info(f"    {halos_in_range.n_matches} halos for BCM")
         
-        # Get DMO particle data
-        pos = dmo_particles['positions'].copy()
-        mass = dmo_particles['masses'].copy()
+        # Create BaryonForge data structures
+        # Cosmology dict for BaryonForge
+        cosmo_dict = {
+            'Omega_m': 0.3089,
+            'Omega_b': 0.0486,
+            'h': 0.6774,
+            'sigma8': 0.8159,
+            'n_s': 0.9667,
+            'w0': -1.0,
+        }
         
-        # Build KD-tree
-        tree = cKDTree(pos, boxsize=self.config.box_size)
+        # Create HaloNDCatalog (halo positions and masses)
+        halo_cat = bfg.utils.HaloNDCatalog(
+            x=halos_in_range.dmo_positions[:, 0],
+            y=halos_in_range.dmo_positions[:, 1],
+            z=halos_in_range.dmo_positions[:, 2],
+            M=halos_in_range.dmo_masses,
+            redshift=redshift,
+            cosmo=cosmo_dict,
+        )
         
-        # Apply BCM to each halo
-        n_displaced = 0
-        for i in range(halos_in_range.n_matches):
-            center = halos_in_range.dmo_positions[i]
-            M_200 = halos_in_range.dmo_masses[i]
-            R_200 = halos_in_range.dmo_radii[i]
-            
-            # Find particles within 5×R_200
-            max_r = R_200 * self.config.radius_factor
-            indices = tree.query_ball_point(center, max_r)
-            
-            if len(indices) == 0:
-                continue
-            
-            # Compute radial distances
-            dx = pos[indices] - center
-            # Handle periodic boundaries
-            dx = dx - self.config.box_size * np.round(dx / self.config.box_size)
-            r = np.linalg.norm(dx, axis=1)
-            r_unit = dx / r[:, np.newaxis]
-            
-            # Get BCM displacement (r_new / r_old ratio)
-            # This is a simplified version - BaryonForge may have different API
-            try:
-                displacement_ratio = bcm.displacement_ratio(r / R_200, M_200)
-                new_r = r * displacement_ratio
-                
-                # Apply displacement
-                pos[indices] = center + r_unit * new_r[:, np.newaxis]
-                n_displaced += len(indices)
-            except Exception as e:
-                logger.warning(f"BCM failed for halo {i}: {e}")
+        # Create ParticleSnapshot
+        pos = dmo_particles['positions']
+        masses = dmo_particles['masses']
         
-        logger.info(f"    Displaced {n_displaced:,} particles")
+        particle_snap = bfg.utils.ParticleSnapshot(
+            x=pos[:, 0],
+            y=pos[:, 1],
+            z=pos[:, 2],
+            M=masses,
+            L=self.config.box_size,
+            redshift=redshift,
+            cosmo=cosmo_dict,
+        )
+        
+        logger.info(f"    Running BaryonifySnapshot on {len(pos):,} particles...")
+        
+        # Run baryonification
+        Runner = bfg.Runners.BaryonifySnapshot(
+            halo_cat, particle_snap,
+            epsilon_max=self.config.radius_factor,
+            model=Baryons,
+            verbose=(rank == 0),
+        )
+        
+        new_cat = Runner.process()
+        
+        # Extract new positions
+        new_pos = np.column_stack([new_cat['x'], new_cat['y'], new_cat['z']])
+        
+        logger.info(f"    BCM applied successfully")
         
         return {
-            'positions': pos,
-            'masses': mass,
+            'positions': new_pos,
+            'masses': masses,
             'mode': 'bcm',
             'bcm_model': self.config.bcm_model,
-            'n_displaced': n_displaced,
             'n_halos': halos_in_range.n_matches,
+            'snapshot': snap_num,
         }
     
     # =========================================================================
