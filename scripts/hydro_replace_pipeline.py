@@ -190,6 +190,24 @@ class PipelineConfig:
 
 
 # =============================================================================
+# Helper Functions
+# =============================================================================
+
+def load_snapshot_header(basepath: str, snap_num: int) -> dict:
+    """
+    Load header attributes from TNG snapshot using h5py directly.
+    
+    illustris_python doesn't have loadHeader, so we read directly.
+    """
+    snap_path = snapshot.snapPath(basepath, snap_num)
+    header = {}
+    with h5py.File(snap_path, 'r') as f:
+        for key in f['Header'].attrs.keys():
+            header[key] = f['Header'].attrs[key]
+    return header
+
+
+# =============================================================================
 # Main Pipeline Class
 # =============================================================================
 
@@ -353,9 +371,10 @@ class HydroReplacePipeline:
         all_coords = []
         all_masses = []
         
-        # Load header once to get mass table
-        header = snapshot.loadHeader(basepath, snap_num)
-        mass_table = header['MassTable']  # 10^10 Msun/h
+        # Load header from HDF5 file directly
+        snap_path = snapshot.snapPath(basepath, snap_num)
+        with h5py.File(snap_path, 'r') as f:
+            mass_table = f['Header'].attrs['MassTable']  # 10^10 Msun/h
         
         for ptype in particle_types:
             try:
@@ -532,7 +551,7 @@ class HydroReplacePipeline:
         
         # Get snapshot redshift for scale factor
         snap_num = dmo_particles.get('snapshot', 99)
-        header = snapshot.loadHeader(self.config.dmo_basepath, snap_num)
+        header = load_snapshot_header(self.config.dmo_basepath, snap_num)
         redshift = header['Redshift']
         a = 1.0 / (1.0 + redshift)
         
@@ -872,7 +891,7 @@ class HydroReplacePipeline:
         
         # Get header info from original snapshot
         try:
-            orig_header = snapshot.loadHeader(self.config.dmo_basepath, snap_num)
+            orig_header = load_snapshot_header(self.config.dmo_basepath, snap_num)
             redshift = orig_header['Redshift']
             time_val = orig_header['Time']
             omega_m = orig_header.get('Omega0', 0.3089)
