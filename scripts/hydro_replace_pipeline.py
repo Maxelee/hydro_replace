@@ -310,9 +310,10 @@ class HydroReplacePipeline:
             self.save_power_spectrum(modified, snap_num)
         
         if self.config.save_profiles and matched_halos is not None:
-            self.save_profiles(dmo_particles, hydro_particles, matched_halos, snap_num)
+            # For bcm/replace modes, compute profiles from modified particles
+            self.save_halo_profiles(modified, matched_halos, snap_num)
         
-        # 4. Write lux input
+        # 4. Write lux input (modified snapshot in TNG-compatible format)
         self.write_lux_input(modified, snap_num)
     
     # =========================================================================
@@ -733,71 +734,264 @@ class HydroReplacePipeline:
         
         logger.info(f"    Saved P(k) to {outfile}")
     
-    def save_profiles(self, dmo_particles: Dict, hydro_particles: Optional[Dict],
-                      matched_halos: 'MatchedCatalog', snap_num: int):
-        """Save radial density profiles for halos."""
-        logger.info(f"    Computing profiles...")
+    def save_halo_profiles(self, particles: Dict, matched_halos: 'MatchedCatalog', 
+                            snap_num: int):
+        """
+        Save radial density profiles for all halos in mass range.
         
-        # Select a subset of halos for profiles (e.g., 100 per mass bin)
-        halos = matched_halos.filter_by_mass(self.config.mass_min, self.config.mass_max)
-        n_profile = min(100, halos.n_matches)
+        Computes 3D spherical density profiles out to 5×R_200 for each halo
+        from the modified particle distribution (BCM or replacement).
         
-        # Sample halos
-        indices = np.linspace(0, halos.n_matches-1, n_profile, dtype=int)
+        Output: HDF5 file with profiles for each halo.
+        """
+        logger.info(f"    Computing halo profiles to {self.config.profile_rmax}×R_200...")
         
-        # Radial bins
-        r_bins = np.logspace(-2, np.log10(self.config.profile_rmax), 
-                            self.config.profile_bins + 1)
+        # Filter halos by mass
+        halos = matched_halos.filter_by_mass(self.config.mass_min, self.config.mass_max, 
+                                              use_dmo=True)
+        n_halos = halos.n_matches
+        logger.info(f"    Computing profiles for {n_halos} halos")
         
-        profiles = []
-        for i in indices:
+        # Radial bins (in units of R_200)
+        n_bins = self.config.profile_bins
+        r_bins_R200 = np.logspace(-2, np.log10(self.config.profile_rmax), n_bins + 1)
+        r_centers_R200 = np.sqrt(r_bins_R200[:-1] * r_bins_R200[1:])  # Geometric mean
+        
+        # Get particle positions and masses
+        pos = particles['positions']
+        mass = particles['masses']
+        box = self.config.box_size
+        
+        # Build KD-tree for fast neighbor queries
+        tree = cKDTree(pos, boxsize=box)
+        
+        # Storage for all profiles
+        all_profiles = np.zeros((n_halos, n_bins), dtype=np.float64)
+        all_enclosed_mass = np.zeros((n_halos, n_bins), dtype=np.float64)
+        halo_ids = np.zeros(n_halos, dtype=np.int64)
+        halo_masses = np.zeros(n_halos, dtype=np.float64)
+        halo_radii = np.zeros(n_halos, dtype=np.float64)
+        
+        for i in range(n_halos):
             center = halos.dmo_positions[i]
-            R_200 = halos.dmo_radii[i]
-            M_200 = halos.dmo_masses[i]
+            R_200 = halos.dmo_radii[i]  # in Mpc/h
+            M_200 = halos.dmo_masses[i]  # in Msun/h
             
-            # TODO: Compute actual profiles
-            # This is a placeholder
-            profiles.append({
-                'halo_id': int(halos.dmo_indices[i]),
-                'M_200': M_200,
-                'R_200': R_200,
-                'r_bins': r_bins,
-                # 'rho_dmo': ...,
-                # 'rho_hydro': ...,
-            })
+            # Store halo info
+            halo_ids[i] = halos.dmo_indices[i]
+            halo_masses[i] = M_200
+            halo_radii[i] = R_200
+            
+            # Physical radii for bins
+            r_bins_phys = r_bins_R200 * R_200  # Mpc/h
+            r_max = r_bins_phys[-1]
+            
+            # Find all particles within max radius
+            indices = tree.query_ball_point(center, r_max)
+            
+            if len(indices) == 0:
+                continue
+            
+            # Get particle positions relative to halo center
+            dx = pos[indices] - center
+            # Handle periodic boundaries
+            dx = dx - box * np.round(dx / box)
+            r = np.linalg.norm(dx, axis=1)  # Radial distance
+            
+            # Get particle masses
+            m = mass[indices] if isinstance(mass, np.ndarray) and len(mass) > 1 else np.full(len(indices), mass)
+            if not isinstance(m, np.ndarray):
+                m = np.full(len(indices), m)
+            
+            # Bin particles by radius
+            bin_idx = np.digitize(r, r_bins_phys) - 1
+            
+            for j in range(n_bins):
+                in_bin = (bin_idx == j)
+                # Shell volume
+                V_shell = (4.0/3.0) * np.pi * (r_bins_phys[j+1]**3 - r_bins_phys[j]**3)
+                # Density in Msun/h / (Mpc/h)^3
+                all_profiles[i, j] = np.sum(m[in_bin]) / V_shell
+                # Enclosed mass (cumulative)
+                in_or_below = (bin_idx <= j)
+                all_enclosed_mass[i, j] = np.sum(m[in_or_below])
+            
+            if (i + 1) % 100 == 0:
+                logger.info(f"      Computed {i+1}/{n_halos} profiles")
         
-        # Save
+        # Save to HDF5
         outfile = self.output_base / 'profiles' / f'profiles_snap{snap_num:03d}.h5'
         with h5py.File(outfile, 'w') as f:
-            f.attrs['n_halos'] = len(profiles)
-            f.create_dataset('r_bins', data=r_bins)
-            for j, p in enumerate(profiles):
-                grp = f.create_group(f'halo_{j}')
-                grp.attrs['halo_id'] = p['halo_id']
-                grp.attrs['M_200'] = p['M_200']
-                grp.attrs['R_200'] = p['R_200']
+            # Metadata
+            f.attrs['mode'] = self.config.mode
+            f.attrs['bcm_model'] = self.config.bcm_model if self.config.mode == 'bcm' else 'N/A'
+            f.attrs['n_halos'] = n_halos
+            f.attrs['mass_min'] = self.config.mass_min
+            f.attrs['mass_max'] = self.config.mass_max
+            f.attrs['profile_rmax_R200'] = self.config.profile_rmax
+            f.attrs['n_bins'] = n_bins
+            
+            # Radial bins
+            f.create_dataset('r_bins_R200', data=r_bins_R200)
+            f.create_dataset('r_centers_R200', data=r_centers_R200)
+            
+            # Halo info
+            f.create_dataset('halo_ids', data=halo_ids)
+            f.create_dataset('halo_M200', data=halo_masses)
+            f.create_dataset('halo_R200', data=halo_radii)
+            
+            # Profiles (n_halos × n_bins)
+            f.create_dataset('density_profiles', data=all_profiles, 
+                           compression='gzip', compression_opts=4)
+            f.create_dataset('enclosed_mass', data=all_enclosed_mass,
+                           compression='gzip', compression_opts=4)
         
-        logger.info(f"    Saved {len(profiles)} profiles to {outfile}")
+        logger.info(f"    Saved {n_halos} halo profiles to {outfile}")
     
     def write_lux_input(self, particles: Dict, snap_num: int):
-        """Write modified snapshot in format lux can read."""
-        logger.info(f"    Writing lux input...")
+        """
+        Write modified snapshot in TNG-compatible format for lux.
         
-        outfile = self.output_base / 'lux_input' / f'snap_{snap_num:03d}.hdf5'
+        Lux expects IllustrisTNG format with:
+        - Header group with simulation metadata
+        - PartType1 (DM) with Coordinates and Masses
+        
+        We create a minimal snapshot that lux can read by setting
+        simulation_format=IllustrisTNG in the lux config.
+        
+        File structure mimics TNG: snapdir_XXX/snap_XXX.0.hdf5
+        """
+        logger.info(f"    Writing lux input (TNG-compatible format)...")
+        
+        # Create TNG-like directory structure: snapdir_XXX/snap_XXX.0.hdf5
+        snap_dir = self.output_base / 'lux_input' / f'snapdir_{snap_num:03d}'
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        outfile = snap_dir / f'snap_{snap_num:03d}.0.hdf5'
+        
+        n_particles = len(particles['positions'])
+        
+        # Get header info from original snapshot
+        try:
+            orig_header = snapshot.loadHeader(self.config.dmo_basepath, snap_num)
+            redshift = orig_header['Redshift']
+            time_val = orig_header['Time']
+            omega_m = orig_header.get('Omega0', 0.3089)
+            omega_L = orig_header.get('OmegaLambda', 0.6911)
+            hubble = orig_header.get('HubbleParam', 0.6774)
+        except:
+            # Defaults if header not readable
+            redshift = 0.0
+            time_val = 1.0
+            omega_m = 0.3089
+            omega_L = 0.6911
+            hubble = 0.6774
         
         with h5py.File(outfile, 'w') as f:
-            # Header
+            # Header (matching TNG format)
             header = f.create_group('Header')
             header.attrs['BoxSize'] = self.config.box_size * 1e3  # Mpc/h -> kpc/h
-            header.attrs['NumPart_Total'] = [0, len(particles['positions']), 0, 0, 0, 0]
-            header.attrs['NumPart_ThisFile'] = [0, len(particles['positions']), 0, 0, 0, 0]
+            header.attrs['NumPart_Total'] = np.array([0, n_particles, 0, 0, 0, 0], dtype=np.uint32)
+            header.attrs['NumPart_ThisFile'] = np.array([0, n_particles, 0, 0, 0, 0], dtype=np.uint32)
+            header.attrs['NumPart_Total_HighWord'] = np.array([0, 0, 0, 0, 0, 0], dtype=np.uint32)
+            header.attrs['NumFilesPerSnapshot'] = 1
+            header.attrs['Redshift'] = redshift
+            header.attrs['Time'] = time_val
+            header.attrs['Omega0'] = omega_m
+            header.attrs['OmegaLambda'] = omega_L
+            header.attrs['HubbleParam'] = hubble
+            header.attrs['Flag_DoublePrecision'] = 0
             
-            # Particles (store as PartType1 = DM)
+            # Mass table (index 1 = DM particles)
+            mass_table = np.zeros(6, dtype=np.float64)
+            if isinstance(particles['masses'], np.ndarray) and len(particles['masses']) > 1:
+                # Variable masses - leave MassTable[1] = 0, masses stored in dataset
+                mass_table[1] = 0.0
+            else:
+                # Uniform mass - store in MassTable
+                mass_val = particles['masses'] if np.isscalar(particles['masses']) else particles['masses'][0]
+                mass_table[1] = mass_val / 1e10  # Convert to 10^10 Msun/h
+            header.attrs['MassTable'] = mass_table
+            
+            # PartType1 (DM particles)
             pt1 = f.create_group('PartType1')
-            pt1.create_dataset('Coordinates', data=particles['positions'] * 1e3)  # Mpc/h -> kpc/h
-            pt1.create_dataset('Masses', data=particles['masses'] / 1e10)  # Msun/h -> 10^10 Msun/h
+            
+            # Coordinates in kpc/h (TNG convention)
+            coords = particles['positions'] * 1e3  # Mpc/h -> kpc/h
+            pt1.create_dataset('Coordinates', data=coords.astype(np.float32),
+                             compression='gzip', compression_opts=4)
+            
+            # Masses - only if variable (otherwise use MassTable)
+            if isinstance(particles['masses'], np.ndarray) and len(particles['masses']) > 1:
+                masses = particles['masses'] / 1e10  # Msun/h -> 10^10 Msun/h
+                pt1.create_dataset('Masses', data=masses.astype(np.float32),
+                                 compression='gzip', compression_opts=4)
+            
+            # Particle IDs (required by lux)
+            pt1.create_dataset('ParticleIDs', 
+                             data=np.arange(1, n_particles + 1, dtype=np.uint64),
+                             compression='gzip', compression_opts=4)
+            
+            # Velocities (zeros - not used by lux for lensing)
+            pt1.create_dataset('Velocities', 
+                             data=np.zeros((n_particles, 3), dtype=np.float32),
+                             compression='gzip', compression_opts=4)
         
-        logger.info(f"    Saved lux input to {outfile}")
+        logger.info(f"    Saved lux input: {outfile}")
+        logger.info(f"    ({n_particles:,} particles, z={redshift:.3f})")
+    
+    def generate_lux_config(self) -> Path:
+        """
+        Generate a lux configuration file for the modified snapshots.
+        
+        This creates an .ini file that points to the modified snapshot directory
+        and sets appropriate ray-tracing parameters.
+        
+        Returns:
+            Path to the generated config file
+        """
+        logger.info("Generating lux config file...")
+        
+        # Determine simulation format based on mode
+        if self.config.mode in ['dmo', 'bcm']:
+            sim_format = 'IllustrisTNG-Dark'  # DM-only format
+        else:
+            sim_format = 'IllustrisTNG'  # Hydro format (with baryons)
+        
+        # Build snapshot list and stack flags
+        snaps = self.config.snapshots
+        snap_list = ', '.join(str(s) for s in snaps)
+        # Stack adjacent snapshots for low-z (typical threshold ~z<0.5, snap<52)
+        stack_flags = ', '.join('true' if s < 52 else 'false' for s in snaps)
+        
+        # Config content
+        config_content = f"""# Lux configuration for {self.config.mode} mode
+# Generated by hydro_replace_pipeline.py
+# Date: {time.strftime('%Y-%m-%d %H:%M:%S')}
+
+input_dir={self.output_base / 'lux_input'}
+snapshot_list={snap_list}
+snapshot_stack={stack_flags}
+LP_output_dir={self.output_base / 'lux_LP_output'}
+RT_output_dir={self.output_base / 'lux_RT_output'}
+LP_grid={self.config.grid_resolution}
+RT_grid=1024
+planes_per_snapshot=2
+projection_direction=-1
+translation_rotation=True
+LP_random_seed=2020
+RT_random_seed=1992
+RT_randomization=True
+simulation_format={sim_format}
+angle=5.0
+verbose=True
+"""
+        
+        config_file = self.output_base / f'lux_{self.config.mode}.ini'
+        with open(config_file, 'w') as f:
+            f.write(config_content)
+        
+        logger.info(f"  Saved lux config: {config_file}")
+        return config_file
     
     # =========================================================================
     # Ray-Tracing
@@ -810,11 +1004,27 @@ class HydroReplacePipeline:
         
         logger.info("Running lux ray-tracing...")
         
-        # TODO: Generate lux config file pointing to modified snapshots
-        # TODO: Run lux executable
-        # subprocess.run([self.config.lux_dir + '/lux', config_file])
+        # Generate config file
+        config_file = self.generate_lux_config()
         
-        logger.warning("lux execution not yet implemented")
+        # Create output directories
+        (self.output_base / 'lux_LP_output').mkdir(parents=True, exist_ok=True)
+        (self.output_base / 'lux_RT_output').mkdir(parents=True, exist_ok=True)
+        
+        # Lux executable
+        lux_exe = Path('/mnt/home/mlee1/lux/lux')
+        
+        if not lux_exe.exists():
+            logger.error(f"Lux executable not found: {lux_exe}")
+            return
+        
+        logger.info(f"  Running: {lux_exe} {config_file}")
+        
+        # Note: lux should be run via MPI in a batch job
+        # This is just for reference - actual execution should use:
+        # mpirun -np N /mnt/home/mlee1/lux/lux config_file.ini
+        logger.warning("Lux should be run via MPI in a separate batch job.")
+        logger.warning(f"  Command: mpirun -np <N> {lux_exe} {config_file}")
     
     def analyze_peaks(self):
         """Analyze peak counts from convergence maps."""
