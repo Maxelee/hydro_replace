@@ -52,8 +52,8 @@ status: active
 		├── paper2_bcm_comparison/  
 		├── paper3_emulator/  
 		└── utils/
-- [ ] **SETUP-0.3**: Create `simulation_specifications.md` documenting all sim details
-- [ ] **SETUP-0.4**: Set up version control: `git init`, `.gitignore` for large data
+- [x] **SETUP-0.3**: Create `simulation_specifications.md` documenting all sim details
+- [x] **SETUP-0.4**: Set up version control: `git init`, `.gitignore` for large data
 - [x] **SETUP-0.5**: Create `README.md` with project overview
 
 **→ Deliverable**: Organized workspace ready for analysis
