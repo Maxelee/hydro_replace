@@ -262,9 +262,9 @@ status: active
 - [x] **BCM-5.2**: Verify parameters: M_c, β, μ, θ_ej (from paper)
 - [x] **BCM-5.3**: Apply to all TNG-300-Dark halos
 - [x] **BCM-5.4**: Compute ρ_BCM(r) for all halos
-- [ ] **BCM-5.5**: Grid BCM-modified particles → P_BCM(k)
-- [ ] **BCM-5.6**: Validate: P_BCM should match P_hydro to ~1% (per Arico's claim)
-- [ ] **BCM-5.7**: Save: `halo_profiles_BCM.h5`
+- [x] **BCM-5.5**: Grid BCM-modified particles → P_BCM(k)
+- [x] **BCM-5.6**: Validate: P_BCM should match P_hydro to ~1% (per Arico's claim)
+- [x] **BCM-5.7**: Save: `halo_profiles_BCM.h5`
 
 **→ Deliverable**: BCM-modified simulation + profiles
 
@@ -303,11 +303,11 @@ status: active
 *Reuse your 2023 methodology*
 
 - [x] **RAYTRACE-6.1**: Verify/install ray-tracing code (your 2023 code)
-- [ ] **RAYTRACE-6.2**: Define source redshift: n(z) for LSST (n_gal = 27 arcmin⁻², z_med = 0.9)
-- [ ] **RAYTRACE-6.3**: Lens planes: 50 planes, z = 0 to 2
-- [ ] **RAYTRACE-6.4**: Map size: 5×5 degrees (match 2023)
-- [ ] **RAYTRACE-6.5**: Pixel resolution: 0.5 arcmin
-- [ ] **RAYTRACE-6.6**: Document in `Methods_RayTracing.md`
+- [x] **RAYTRACE-6.2**: Define source redshift: n(z) for LSST (n_gal = 27 arcmin⁻², z_med = 0.9)
+- [x] **RAYTRACE-6.3**: Lens planes: 50 planes, z = 0 to 2
+- [x] **RAYTRACE-6.4**: Map size: 5×5 degrees (match 2023)
+- [x] **RAYTRACE-6.5**: Pixel resolution: 0.5 arcmin
+- [x] **RAYTRACE-6.6**: Document in `Methods_RayTracing.md`
 
 **→ Deliverable**: Ray-tracing pipeline ready
 
@@ -339,11 +339,11 @@ status: active
 - [x] **PEAK-6.1**: Apply 1 arcmin Gaussian smoothing to all 40 maps
 - [x] **PEAK-6.2**: Implement peak finder: local maxima detection
 - [x] **PEAK-6.3**: Compute S/N: ν = κ_peak / σ_κ
-- [ ] **PEAK-6.4**: Define bins: ν = [0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6+]
-- [ ] **PEAK-6.5**: Count peaks per bin for all 40 maps
-- [ ] **PEAK-6.6**: Average over 10 realizations per set
-- [ ] **PEAK-6.7**: Compute errors: std dev across realizations
-- [ ] **PEAK-6.8**: Save: `peak_counts.csv`
+- [x] **PEAK-6.4**: Define bins: ν = [0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6+]
+- [x] **PEAK-6.5**: Count peaks per bin for all 40 maps
+- [x] **PEAK-6.6**: Average over 10 realizations per set
+- [x] **PEAK-6.7**: Compute errors: std dev across realizations
+- [x] **PEAK-6.8**: Save: `peak_counts.csv`
 
 **→ Deliverable**: `peak_counts.csv`
 
