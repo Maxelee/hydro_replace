@@ -91,4 +91,4 @@ __all__ = [
     "compute_suppression",
     # Mass conservation
     "MassConservation",
-    "compute_enclosed_mass",
+    "compute_enclosed_mass",]

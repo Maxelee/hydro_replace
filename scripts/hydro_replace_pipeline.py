@@ -312,33 +312,36 @@ class HydroReplacePipeline:
         all_coords = []
         all_masses = []
         
+        # Load header once to get mass table
+        header = snapshot.loadHeader(basepath, snap_num)
+        mass_table = header['MassTable']  # 10^10 Msun/h
+        
         for ptype in particle_types:
             try:
-                data = snapshot.loadSubset(basepath, snap_num, ptype, 
-                                          ['Coordinates', 'Masses'])
-                
-                # Handle single field case
-                if isinstance(data, np.ndarray):
-                    coords = data
-                    # For DM, compute mass from header
-                    header = snapshot.loadHeader(basepath, snap_num)
-                    mass = header['MassTable'][ptype]
+                # DM (type 1) has fixed mass from header, others have individual masses
+                if ptype == 1:  # Dark matter
+                    # Only load coordinates for DM
+                    coords = snapshot.loadSubset(basepath, snap_num, ptype, ['Coordinates'])
                     n_part = len(coords)
-                    masses = np.full(n_part, mass)
+                    dm_mass = mass_table[ptype]  # Already in 10^10 Msun/h
+                    masses = np.full(n_part, dm_mass, dtype=np.float32)
+                    logger.info(f"      Type {ptype} (DM): {n_part:,} particles, mass={dm_mass:.6e} (10^10 Msun/h)")
                 else:
-                    coords = data['Coordinates']
-                    if 'Masses' in data:
+                    # Gas (0) and stars (4) have individual masses
+                    data = snapshot.loadSubset(basepath, snap_num, ptype, 
+                                              ['Coordinates', 'Masses'])
+                    if isinstance(data, dict):
+                        coords = data['Coordinates']
                         masses = data['Masses']
                     else:
-                        header = snapshot.loadHeader(basepath, snap_num)
-                        mass = header['MassTable'][ptype]
-                        masses = np.full(len(coords), mass)
+                        # Single field returned as array
+                        coords = data
+                        masses = np.full(len(coords), mass_table[ptype], dtype=np.float32)
+                    logger.info(f"      Type {ptype}: {len(coords):,} particles")
                 
                 # Unit conversions: kpc/h -> Mpc/h, 10^10 Msun/h -> Msun/h
                 coords = coords * 1e-3  # kpc -> Mpc
                 masses = masses * 1e10  # 10^10 Msun -> Msun
-                
-                logger.info(f"      Type {ptype}: {len(coords):,} particles")
                 
                 all_coords.append(coords)
                 all_masses.append(masses)
