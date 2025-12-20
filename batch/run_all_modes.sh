@@ -34,7 +34,7 @@ set -e
 # Load modules
 module purge
 module load python openmpi hdf5
-module load lux  # For ray-tracing (loads MPI, HDF5, FFTW3, GSL, Boost)
+module restore lux  # Restore saved module collection for lux dependencies
 
 # Activate virtual environment
 source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
