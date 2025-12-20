@@ -1,0 +1,98 @@
+# =============================================================================
+# Simulation Paths Configuration
+# =============================================================================
+# This file contains all paths to simulations and output directories.
+# Edit this file to match your system configuration.
+
+# TNG-300 Simulations
+tng300:
+  hydro:
+    basePath: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output"
+    name: "TNG300-1"
+    box_size: 205.0  # Mpc/h
+    dm_particle_mass: 0.00398342749867548  # 10^10 Msun/h
+    
+  dmo:
+    basePath: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG_DM/output"
+    name: "TNG300-1-Dark"
+    box_size: 205.0  # Mpc/h
+    dm_particle_mass: 0.0047271638660809  # 10^10 Msun/h
+
+# Public TNG data (alternative paths)
+tng300_public:
+  hydro:
+    basePath: "/mnt/sdceph/users/sgenel/Illustris_IllustrisTNG_public_data_release/L205n2500TNG/output"
+  dmo:
+    basePath: "/mnt/sdceph/users/sgenel/Illustris_IllustrisTNG_public_data_release/L205n2500TNG_DM/output"
+
+# CAMELS Simulations
+camels:
+  base_dir: "/mnt/sdceph/users/sgenel/CAMELS"
+  suites:
+    - name: "SIMBA"
+      hydro_pattern: "SIMBA/LH_{idx}/snap_033.hdf5"
+      dmo_pattern: "SIMBA_DM/LH_{idx}/snap_033.hdf5"
+      n_sims: 81
+      
+    - name: "TNG"
+      hydro_pattern: "IllustrisTNG/LH_{idx}/snap_033.hdf5"
+      dmo_pattern: "IllustrisTNG_DM/LH_{idx}/snap_033.hdf5"
+      n_sims: 81
+      
+    - name: "Astrid"
+      hydro_pattern: "Astrid/LH_{idx}/snap_033.hdf5"
+      dmo_pattern: "Astrid_DM/LH_{idx}/snap_033.hdf5"
+      n_sims: 81
+
+# Output directories
+output:
+  base_dir: "/mnt/home/mlee1/ceph/hydro_replace"
+  
+  # Intermediate products
+  matched_catalogs: "${base_dir}/matched_catalogs"
+  extracted_halos: "${base_dir}/extracted_halos"
+  replaced_snapshots: "${base_dir}/replaced_snapshots"
+  bcm_snapshots: "${base_dir}/bcm_snapshots"
+  pixelized_3D: "${base_dir}/pixelized_3D"
+  
+  # Analysis outputs
+  profiles: "${base_dir}/profiles"
+  power_spectra: "${base_dir}/power_spectra"
+  mass_conservation: "${base_dir}/mass_conservation"
+  
+  # Ray-tracing outputs
+  lightcones: "${base_dir}/lightcones"
+  convergence_maps: "${base_dir}/convergence_maps"
+  peak_counts: "${base_dir}/peak_counts"
+  
+  # Figures
+  figures: "${base_dir}/figures"
+  
+  # Logs
+  logs: "${base_dir}/logs"
+
+# Checkpoint directory
+checkpoints: "/mnt/home/mlee1/ceph/hydro_replace/checkpoints"
+
+# Cosmological parameters (TNG300)
+cosmology:
+  Omega_m: 0.3089
+  Omega_b: 0.0486
+  Omega_Lambda: 0.6911
+  h: 0.6774
+  sigma8: 0.8158
+  n_s: 0.9649
+  w0: -1.0
+  wa: 0.0
+
+# Unit conversions
+units:
+  mass_unit: 1.0e10  # Convert code units to Msun/h
+  length_unit: 1.0e-3  # Convert kpc/h to Mpc/h
+  
+# Snapshot numbers for different redshifts
+snapshots:
+  z0: 99
+  z0.5: 67
+  z1: 50
+  z2: 33

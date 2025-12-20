@@ -1,0 +1,135 @@
+# Hydro Replace Project .gitignore
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# =============================================================================
+# Jupyter Notebooks
+# =============================================================================
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# =============================================================================
+# IDE / Editor
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# =============================================================================
+# Data Files (CRITICAL - these are too large for git)
+# =============================================================================
+# HDF5 data products
+*.h5
+*.hdf5
+
+# FITS files (convergence maps, etc.)
+*.fits
+*.fits.gz
+
+# Pickle files (trained models, emulators)
+*.pkl
+*.pickle
+
+# NumPy arrays
+*.npy
+*.npz
+
+# CSV data (except small config files)
+data_products/
+output/
+results/
+
+# =============================================================================
+# Large Simulation Data (DO NOT COMMIT)
+# =============================================================================
+# Particle extraction outputs
+hydro_halo_particles*.h5
+matched_halos*.csv
+halo_profiles*.h5
+power_spectra*.h5
+convergence_maps/
+peak_counts/
+
+# CAMELS data products
+camels_data/
+emulator_training_data/
+
+# =============================================================================
+# Figures and Plots
+# =============================================================================
+# Keep source, exclude generated
+figures/*.pdf
+figures/*.png
+figures/*.eps
+!figures/.gitkeep
+
+# =============================================================================
+# Logs and Temporary Files
+# =============================================================================
+*.log
+logs/
+*.tmp
+*.temp
+slurm-*.out
+*.err
+
+# =============================================================================
+# System Files
+# =============================================================================
+.DS_Store
+Thumbs.db
+
+# =============================================================================
+# Documentation Build
+# =============================================================================
+docs/_build/
+site/
+
+# =============================================================================
+# Test and Coverage
+# =============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# =============================================================================
+# Secrets and Credentials (if any)
+# =============================================================================
+.env
+.envrc
+secrets.yaml
+credentials.yaml

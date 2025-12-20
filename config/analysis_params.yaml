@@ -1,0 +1,263 @@
+# =============================================================================
+# Analysis Parameters Configuration
+# =============================================================================
+# This file contains all analysis parameters for the hydro replacement pipeline.
+
+# -----------------------------------------------------------------------------
+# Halo Matching Parameters
+# -----------------------------------------------------------------------------
+matching:
+  # Minimum halo mass for matching (Msun/h)
+  min_halo_mass: 1.0e12
+  
+  # Number of most-bound particles to use for matching
+  n_most_bound: 100
+  
+  # Minimum overlap fraction for valid match
+  min_overlap_fraction: 0.5
+  
+  # Minimum particles per halo to consider
+  min_particles: 1000
+  
+  # Maximum center separation (in units of R_200c) for bijective matching
+  max_separation: 0.1
+
+# -----------------------------------------------------------------------------
+# Halo Extraction Parameters
+# -----------------------------------------------------------------------------
+extraction:
+  # Radius multiples for extraction (in units of R_200c)
+  radius_multiples: [1.0, 3.0, 5.0]
+  
+  # Default extraction radius (for single extraction)
+  default_radius_mult: 5.0
+  
+  # Particle types to extract
+  particle_types:
+    gas: 0
+    dm: 1
+    stars: 4
+    bh: 5
+
+# -----------------------------------------------------------------------------
+# Mass Bins for Replacement
+# -----------------------------------------------------------------------------
+mass_bins:
+  # Regular bins (log10(M/Msun/h))
+  regular:
+    - {min: 12.0, max: 12.5, label: "M12.0-12.5"}
+    - {min: 12.5, max: 13.0, label: "M12.5-13.0"}
+    - {min: 13.0, max: 13.5, label: "M13.0-13.5"}
+    - {min: 13.5, max: 14.0, label: "M13.5-14.0"}
+    - {min: 14.0, max: 14.5, label: "M14.0-14.5"}
+    - {min: 14.5, max: 15.0, label: "M14.5-15.0"}
+    
+  # Cumulative bins (>= threshold)
+  cumulative:
+    - {min: 12.0, label: "M_gt12.0"}
+    - {min: 12.5, label: "M_gt12.5"}
+    - {min: 13.0, label: "M_gt13.0"}
+    - {min: 13.5, label: "M_gt13.5"}
+    - {min: 14.0, label: "M_gt14.0"}
+    - {min: 14.5, label: "M_gt14.5"}
+
+# -----------------------------------------------------------------------------
+# Replacement Configuration
+# -----------------------------------------------------------------------------
+replacement:
+  # Radius multiples for replacement
+  radius_multiples: [1.0, 3.0, 5.0]
+  
+  # Use bijective matching (recommended)
+  use_bijective_matching: true
+  
+  # Grid resolution for pixelization
+  grid_resolution: 1024
+  
+  # Mass assignment scheme (CIC, NGP, TSC)
+  mas_scheme: "CIC"
+
+# -----------------------------------------------------------------------------
+# Profile Analysis
+# -----------------------------------------------------------------------------
+profiles:
+  # Number of radial bins
+  n_bins: 50
+  
+  # Radial range (in units of R_200c)
+  r_min: 0.01
+  r_max: 5.0
+  
+  # Use logarithmic spacing
+  log_spacing: true
+  
+  # Compute profiles for these types
+  profile_types: ["total", "dm", "gas", "stars"]
+
+# -----------------------------------------------------------------------------
+# Power Spectrum Analysis
+# -----------------------------------------------------------------------------
+power_spectrum:
+  # Grid resolution for FFT
+  grid_resolution: 1024
+  
+  # Mass assignment scheme
+  mas_scheme: "CIC"
+  
+  # k-range (h/Mpc)
+  k_min: 0.01
+  k_max: 10.0
+  
+  # Number of k bins
+  n_k_bins: 100
+  
+  # Compute cross-spectra
+  compute_cross: true
+
+# -----------------------------------------------------------------------------
+# Mass Conservation Analysis
+# -----------------------------------------------------------------------------
+mass_conservation:
+  # Radii to compute M(<r) (in units of R_200c)
+  radii: [0.5, 1.0, 2.0, 3.0, 5.0]
+  
+  # Compute for individual particle types
+  by_particle_type: true
+  
+  # Percentiles for statistics
+  percentiles: [16, 50, 84]
+
+# -----------------------------------------------------------------------------
+# Baryonification (BCM) Parameters
+# -----------------------------------------------------------------------------
+bcm:
+  # Arico+2020 parameters
+  arico2020:
+    alpha_g: 2.0
+    epsilon_h: 0.015
+    M1_0: 2.2e10  # Msun/h (divided by h internally)
+    M_c: 2.3e13  # Msun/h
+    eta: 0.14
+    mu: 0.31
+    beta: 4.09
+    epsilon_hydro: 2.236  # sqrt(5)
+    M_inn: 3.3e13
+    M_r: 1.0e30
+    beta_r: 2.0
+    theta_inn: 0.1
+    theta_out: 5.0
+    theta_rg: 0.3
+    sigma_rg: 0.1
+    a: 0.3
+    n: 2.0
+    p: 0.3
+    q: 0.707
+    
+  # Integration parameters
+  n_integration: 50000
+  n_samples_R: 10000
+  R_min: 0.001
+  R_max: 20.0
+
+# -----------------------------------------------------------------------------
+# Ray-Tracing Configuration
+# -----------------------------------------------------------------------------
+raytrace:
+  # Light-cone parameters
+  angle: 5.0  # degrees
+  lp_grid: 4096  # lens plane grid
+  rt_grid: 1024  # ray-tracing grid
+  planes_per_snapshot: 2
+  
+  # Source redshift distribution (LSST-like)
+  source:
+    z_min: 0.0
+    z_max: 3.0
+    z_median: 0.9
+    n_gal: 27.0  # per arcmin^2
+    sigma_epsilon: 0.26  # shape noise
+    
+  # Snapshot list (z from low to high)
+  snapshot_list: [96, 90, 85, 80, 76, 71, 67, 63, 59, 56, 52, 49, 46, 43, 41, 38, 35, 33, 31, 29]
+  
+  # Whether to stack snapshots at high-z
+  snapshot_stack: [false, false, false, false, false, false, false, false, false, false, 
+                   true, true, true, true, true, true, true, true, true, true]
+  
+  # Number of realizations
+  n_realizations: 10
+  
+  # Random seeds
+  lp_random_seed: 2020
+  rt_random_seed: 1992
+
+# -----------------------------------------------------------------------------
+# Convergence Map Parameters
+# -----------------------------------------------------------------------------
+convergence_maps:
+  # Map size and resolution
+  map_size: 5.0  # degrees
+  pixel_size: 0.5  # arcmin
+  npix: 600  # map_size * 60 / pixel_size
+  
+  # Smoothing
+  smoothing_scales: [1.0, 2.0, 5.0]  # arcmin (Gaussian sigma)
+  default_smoothing: 1.0
+  
+  # Noise
+  add_shape_noise: true
+  n_gal: 27.0  # per arcmin^2
+  sigma_epsilon: 0.26
+
+# -----------------------------------------------------------------------------
+# Peak Finding Parameters
+# -----------------------------------------------------------------------------
+peaks:
+  # S/N bins for peak counts
+  sn_bins: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+  sn_max: 10.0
+  
+  # Alternative: kappa bins
+  kappa_bins_min: -0.1
+  kappa_bins_max: 0.15
+  kappa_bins_n: 21
+  
+  # Smoothing for peak finding (arcmin)
+  smoothing: 1.0
+  
+  # Include boundary peaks
+  include_border: false
+  
+  # Minimum separation between peaks (arcmin)
+  min_separation: 1.0
+
+# -----------------------------------------------------------------------------
+# Computation Parameters
+# -----------------------------------------------------------------------------
+computation:
+  # Number of MPI ranks (for reference)
+  n_mpi_ranks: 32
+  
+  # Batch size for halo processing
+  halo_batch_size: 100
+  
+  # Enable checkpointing
+  enable_checkpoints: true
+  checkpoint_interval: 100  # halos
+  
+  # Memory limit per rank (GB)
+  memory_limit: 32.0
+  
+  # Use float32 for memory efficiency
+  use_float32: true
+
+# -----------------------------------------------------------------------------
+# Random Seeds (for reproducibility)
+# -----------------------------------------------------------------------------
+random_seeds:
+  matching: 42
+  extraction: 43
+  replacement: 44
+  raytrace_lp: 2020
+  raytrace_rt: 1992
+  noise: 1234

@@ -1,0 +1,120 @@
+# =============================================================================
+# Ray-Tracing Configuration
+# =============================================================================
+# Specific configuration for ray-tracing and weak lensing analysis.
+
+# -----------------------------------------------------------------------------
+# Input Configuration
+# -----------------------------------------------------------------------------
+input:
+  # Simulation format
+  simulation_format: "IllustrisTNG"
+  
+  # Input directories (will be overridden by main config)
+  input_dir: "/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output"
+  
+  # Snapshot configuration
+  snapshots:
+    list: [96, 90, 85, 80, 76, 71, 67, 63, 59, 56, 52, 49, 46, 43, 41, 38, 35, 33, 31, 29]
+    stack: [false, false, false, false, false, false, false, false, false, false,
+            true, true, true, true, true, true, true, true, true, true]
+
+# -----------------------------------------------------------------------------
+# Lens Plane Configuration
+# -----------------------------------------------------------------------------
+lens_planes:
+  # Grid resolution
+  grid: 4096
+  
+  # Planes per snapshot
+  planes_per_snapshot: 2
+  
+  # Projection direction (-1 for random)
+  projection_direction: -1
+  
+  # Enable translation/rotation
+  translation_rotation: true
+  
+  # Random seed
+  random_seed: 2020
+
+# -----------------------------------------------------------------------------
+# Ray-Tracing Configuration
+# -----------------------------------------------------------------------------
+raytracing:
+  # Grid resolution for rays
+  grid: 1024
+  
+  # Field of view (degrees)
+  angle: 5.0
+  
+  # Enable randomization
+  randomization: true
+  
+  # Random seed
+  random_seed: 1992
+
+# -----------------------------------------------------------------------------
+# Output Configuration
+# -----------------------------------------------------------------------------
+output:
+  # Base output directory
+  base_dir: "/mnt/home/mlee1/ceph/hydro_replace/raytracing"
+  
+  # Lens plane output
+  lp_output_dir: "${base_dir}/lens_planes"
+  
+  # Ray-tracing output
+  rt_output_dir: "${base_dir}/convergence"
+  
+  # File format (FITS or NPZ)
+  format: "FITS"
+
+# -----------------------------------------------------------------------------
+# Source Galaxy Configuration
+# -----------------------------------------------------------------------------
+sources:
+  # LSST-like source distribution
+  lsst:
+    name: "LSST"
+    z_min: 0.0
+    z_max: 3.0
+    z_median: 0.9
+    n_gal: 27.0  # per arcmin^2
+    sigma_epsilon: 0.26
+    
+  # Euclid-like source distribution
+  euclid:
+    name: "Euclid"
+    z_min: 0.0
+    z_max: 2.5
+    z_median: 0.8
+    n_gal: 30.0
+    sigma_epsilon: 0.30
+    
+  # Default configuration
+  default: "lsst"
+
+# -----------------------------------------------------------------------------
+# Map Processing
+# -----------------------------------------------------------------------------
+maps:
+  # Map dimensions
+  size_deg: 5.0
+  pixel_arcmin: 0.5
+  npix: 600
+  
+  # Smoothing options (Gaussian FWHM in arcmin)
+  smoothing:
+    - 0.0  # No smoothing
+    - 1.0
+    - 2.0
+    - 5.0
+    
+  # Noise realization
+  n_noise_realizations: 100
+
+# -----------------------------------------------------------------------------
+# Verbosity
+# -----------------------------------------------------------------------------
+verbose: true
