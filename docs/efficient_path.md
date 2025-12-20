@@ -1,6 +1,30 @@
 # Efficient Path Forward: 3 Papers Strategy
 
-> **Key Insight**: We have substantial pre-computed data. The efficient path leverages existing products and fills gaps strategically.
+> **Key Insight**: Build a unified pipeline that handles replacement/BCM during ray-tracing for all 20 snapshots.
+
+---
+
+## Dream Pipeline Summary
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  FOR EACH SNAPSHOT (20 total, z=0 to z≈3):                       │
+│                                                                  │
+│  1. Load TNG data (DMO + Hydro + Halo catalogs)                 │
+│  2. Apply modification (based on mode flag):                     │
+│     - DMO: baseline                                              │
+│     - HYDRO: truth                                               │
+│     - REPLACE: swap DMO halos with hydro particles               │
+│     - BCM: apply BaryonForge model to DMO halos                  │
+│  3. Save intermediate products:                                  │
+│     - 2D projected maps                                          │
+│     - P(k) power spectra                                         │
+│     - Halo profiles (DMO, hydro, BCM) out to 5×R_vir            │
+│  4. Feed modified particles to lux ray-tracing                   │
+│  5. Save κ(θ) convergence maps                                   │
+│  6. Peak count analysis                                          │
+└──────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -19,55 +43,49 @@
 
 ## Paper 1: Peaks + P(k) (TNG-300)
 
-### What We Have
-1. ✅ Full P(k) suppression analysis ready (66 configurations)
-2. ✅ Per-halo BCM profiles vs hydro profiles (519 halos)
-3. ✅ Ray-tracing code (lux)
-
-### What We Need
+### What We Need to Build
 | Task | Priority | Effort | Notes |
 |------|----------|--------|-------|
-| Visualize existing P(k) | HIGH | 1 day | Create suppression ratio plots |
-| Profile comparison analysis | HIGH | 2 days | Already have data in .h5 files |
-| Run lux on DMO/Hydro | HIGH | 1 week | Standard runs |
-| Create replaced snapshots | MEDIUM | 3 days | Combine BCM halo outputs |
-| Run lux on replaced | MEDIUM | 1 week | After snapshot creation |
-| Peak detection + statistics | HIGH | 3 days | Reuse 2023 code |
+| **Unified pipeline script** | HIGH | 1 week | Core infrastructure for all papers |
+| Process all 20 snapshots | HIGH | 2-3 days compute | After pipeline built |
+| BCM on all snapshots | HIGH | 2-3 days compute | Using BaryonForge Arico20 |
+| lux ray-tracing (4 modes) | HIGH | 1 week compute | DMO, Hydro, Replace, BCM |
+| Peak detection + statistics | HIGH | 2 days | Reuse 2023 code |
 
-### Efficient Workflow
-```
-Week 1: Visualize P(k), analyze BCM profiles
-Week 2: Run lux on DMO + Hydro (parallel with analysis)
-Week 3: Create replaced snapshots, run lux
-Week 4: Peak detection, statistical comparison
-Week 5: Write Paper 1
-```
+### Runs Needed
+| Mode | Description | Priority |
+|------|-------------|----------|
+| DMO | Baseline, no baryons | HIGH |
+| Hydro | Truth from TNG-300 | HIGH |
+| Replace (5×R_200, M>10¹²) | Main result | HIGH |
+| BCM Arico20 | BCM baseline | HIGH |
+| Replace (3×R_200) | Radius test | MEDIUM |
+| Replace (M>10¹³) | Mass threshold test | MEDIUM |
+
+### Existing Data to Leverage
+- ✅ 519 halos already BCM'd at z=0 (validation)
+- ✅ P(k) computed for z=0 replacement (66 configs)
+- ✅ Halo matching code working
 
 ---
 
 ## Paper 2: Multi-BCM Comparison
 
-### What We Have
-1. ✅ Arico20 BCM applied to 519 halos
-2. ✅ Per-halo density profiles: BCM, DMO, Hydro all stored
-3. ✅ BCM_lensing code for additional models
-
 ### What We Need
 | Task | Priority | Effort | Notes |
 |------|----------|--------|-------|
-| Additional BCM models | HIGH | 3 days | Schneider19, Mead20 via BaryonForge |
-| Profile comparison plots | HIGH | 2 days | Use existing .h5 data |
-| P(k) from BCM snapshots | MEDIUM | 2 days | Grid baryonified_coords |
-| Peak comparison | LOW | 3 days | After Paper 1 pipeline |
+| Add BCM models to pipeline | HIGH | 2 days | Schneider19, Mead20 via BaryonForge |
+| Run pipeline with each BCM | HIGH | 3 days compute | Reuse Paper 1 infrastructure |
+| Profile comparison analysis | HIGH | 2 days | BCM vs Hydro vs Replaced |
+| Peak comparison | HIGH | 1 day | Which BCM matches peaks best? |
 
-### Efficient Workflow
-```
-Can start immediately using existing BCM outputs
-Week 1: Analyze existing Arico20 profiles (519 halos)
-Week 2: Add Schneider19 + Mead20 models via BaryonForge
-Week 3: Comparative analysis, plots
-Week 4: Write Paper 2 (short paper ~8 pages)
-```
+### BCM Models to Test
+| Model | Reference | Notes |
+|-------|-----------|-------|
+| Arico20 | Arico+2020, 2021 | TNG-calibrated (baseline) |
+| Schneider19 | Schneider+2015, 2019 | Original BCM |
+| Mead20 | Mead+2020 | HMcode parametrization |
+| Schneider25 | Schneider+2025 | Latest, if available |
 
 ---
 
@@ -134,56 +152,68 @@ For multi-redshift validation before full ray-tracing:
 
 ---
 
-## Immediate Next Actions
+## Immediate Next Steps
 
-### Today/This Week
-1. **Create P(k) suppression plots** from existing `/mnt/home/mlee1/ceph/power_spectra/`
-2. **Analyze BCM profile quality** using `/mnt/home/mlee1/ceph/baryonification_output/halos/`
-3. **Test lux** on a single snapshot
+### This Week: Build the Pipeline Core
+1. **Create `HydroReplacePipeline` class** - Main Python orchestrator
+2. **Test on single snapshot** (snap 99, z=0) with all 4 modes
+3. **Validate outputs** against existing z=0 P(k) data
 
-### Next Week
-1. Run full lux on DMO + Hydro
-2. Create replaced snapshot pipeline
-3. Start peak analysis
+### Next Week: Scale to All Snapshots
+1. Process all 20 snapshots with pipeline
+2. Run lux ray-tracing for each mode
+3. Generate convergence maps
 
----
-
-## lux Modification Strategy
-
-**Branch**: `hydro_replace` in `/mnt/home/mlee1/lux/`
-
-### Option A: Convert to TNG-like Format (Recommended)
-- Write `create_replaced_snapshot.py` that outputs HDF5 in TNG format
-- Lux reads it as-is, no code changes needed
-- Easy to validate
-
-### Option B: Modify read_hdf.cpp
-- Add flag for "replaced" mode
-- Read from our custom format
-- More flexible but requires C++ changes
-
-**Decision**: Start with Option A for speed, consider Option B if performance issues.
+### Week 3+: Analysis & Papers
+1. Peak detection and comparison
+2. Profile analysis (BCM vs Hydro vs Replace)
+3. Write Paper 1
 
 ---
 
-## Data Dependencies Graph
+## Implementation Files
 
 ```
-halo_matches.npz
+Priority 1: Pipeline Core
+├── scripts/hydro_replace_pipeline.py    # Main orchestrator class
+├── src/hydro_replace/replacement.py     # Particle replacement logic
+├── src/hydro_replace/bcm_wrapper.py     # BaryonForge interface
+├── src/hydro_replace/profiles.py        # Profile computation & saving
+└── src/hydro_replace/power_spectrum.py  # P(k) computation
+
+Priority 2: lux Integration  
+├── lux branch: hydro_replace            # Minimal modifications if needed
+├── batch/run_pipeline_single.sh         # Test single snapshot
+└── batch/run_pipeline_full.sh           # Full 20-snapshot run
+
+Priority 3: Analysis
+├── scripts/analyze_peaks.py             # Peak detection on κ maps
+├── scripts/compare_bcm_models.py        # Multi-BCM comparison
+└── notebooks/paper1_figures.ipynb       # Publication plots
+```
+
+---
+
+## Data Flow
+
+```
+TNG-300 Snapshots (20)
        │
-       ├──► BCM.py ──► baryonification_output/halos/*.h5
-       │                      │
-       │                      ├──► profile_comparison (Paper 2)
-       │                      │
-       │                      └──► create_replaced_snapshot.py ──► replaced_snap.hdf5
-       │                                                                  │
-       │                                                                  ▼
-       │                                                          lux ray-tracing
-       │                                                                  │
-       ├──► pixelized/ ──► power_spectra/ ──► suppression plots          │
-       │                                              │                   │
-       │                                              ▼                   ▼
-       │                                         Paper 1 P(k)        Paper 1 Peaks
+       ▼
+┌─────────────────────────────────────────┐
+│     HydroReplacePipeline                │
+│                                         │
+│  mode = 'dmo' | 'hydro' | 'replace' |   │
+│          'bcm:Arico20' | 'bcm:Schneider'│
+└─────────────────────────────────────────┘
        │
-       └──► CAMELS (future) ──► mass_conservation ──► GP emulator ──► Paper 3
+       ├──► 2D Maps (Σ)     ──► Compare projections
+       ├──► 3D P(k)         ──► Suppression S(k,z)
+       ├──► Profiles ρ(r)   ──► BCM validation
+       │
+       ▼
+   lux ray-tracing
+       │
+       ▼
+   κ(θ) maps ──► Peak counts n(ν) ──► Paper 1
 ```

@@ -2,6 +2,7 @@
 ---
 tags: hydro-replace, todo, master-plan, phd-projects
 date: 2025-12-20
+updated: 2025-12-22
 status: active
 ---
 
@@ -12,7 +13,61 @@ status: active
 
 ---
 
-## EXISTING DATA PRODUCTS (Pre-computed)
+## 🚀 DREAM PIPELINE: UNIFIED RAY-TRACING APPROACH
+
+> **Key Insight**: BCM must be applied to ALL 20 snapshots during ray-tracing, not just z=0. The unified pipeline handles everything in one clean flow.
+
+### Pipeline Flow
+```
+TNG Data → Mode Flag → Modify → Save Products → lux → κ Maps → Peaks
+           (DMO/Hydro/Replace/BCM)
+```
+
+### Four Processing Modes
+| Mode | Description | What happens |
+|------|-------------|--------------|
+| `dmo` | Baseline | Use DMO particles as-is |
+| `hydro` | Truth | Use hydro particles as-is |  
+| `replace` | Main result | Swap DMO halos with matched hydro particles |
+| `bcm` | BCM comparison | Apply BaryonForge model to DMO halos |
+
+### Output Products (per snapshot, per mode)
+1. **2D projected maps**: Σ(x,y) surface density  
+2. **3D power spectra**: P(k)
+3. **Halo profiles**: ρ(r) out to 5×R_vir (for DMO, Hydro, BCM comparison)
+4. **lux-ready snapshots**: Modified particles for ray-tracing
+5. **κ convergence maps**: From lux ray-tracing
+6. **Peak counts**: n(ν) by S/N bin
+
+### 20 Snapshots (z = 0 to z ≈ 2.9)
+```
+99 (z=0.00), 96 (z=0.06), 90 (z=0.18), 85 (z=0.28), 80 (z=0.39),
+76 (z=0.48), 71 (z=0.60), 67 (z=0.71), 63 (z=0.82), 59 (z=0.94),
+56 (z=1.04), 52 (z=1.17), 49 (z=1.30), 46 (z=1.43), 43 (z=1.57),
+41 (z=1.67), 38 (z=1.82), 35 (z=1.98), 33 (z=2.11), 29 (z=2.44)
+```
+
+### Immediate Implementation Tasks
+
+- [ ] **PIPE-0.1**: Build `HydroReplacePipeline` class skeleton ✅ DONE: `scripts/hydro_replace_pipeline.py`
+- [ ] **PIPE-0.2**: Implement `load_particles()` - TNG particle loading with illustris_python
+- [ ] **PIPE-0.3**: Implement `load_halo_matches()` - Load/compute halo bijective matching
+- [ ] **PIPE-0.4**: Implement `apply_replacement()` - DMO→Hydro particle swap within 5×R_200
+- [ ] **PIPE-0.5**: Implement `apply_bcm()` - BaryonForge model application
+- [ ] **PIPE-0.6**: Implement `save_projected_maps()` - 2D CIC projection
+- [ ] **PIPE-0.7**: Implement `save_power_spectrum()` - Pylians P(k)
+- [ ] **PIPE-0.8**: Implement `save_profiles()` - Radial density profiles
+- [ ] **PIPE-0.9**: Implement `write_lux_input()` - HDF5 in TNG-like format
+- [ ] **PIPE-0.10**: Create lux branch: `git checkout -b hydro_replace` in `/mnt/home/mlee1/lux/`
+- [ ] **PIPE-0.11**: Test pipeline on snap 99 (z=0) with all 4 modes
+- [ ] **PIPE-0.12**: Scale to 5-snapshot pilot (99, 76, 63, 49, 35)
+- [ ] **PIPE-0.13**: Full 20-snapshot production run
+
+**Main Script**: `scripts/hydro_replace_pipeline.py`
+
+---
+
+## EXISTING DATA PRODUCTS (Pre-computed, z=0 only for validation)
 
 **Location**: `/mnt/home/mlee1/ceph/pixelized/`  
 **Total Files**: 61 files (~8.7 GB)

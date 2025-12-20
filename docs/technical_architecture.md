@@ -86,24 +86,216 @@ For each of 20 snapshots:
 **Pros**: Leverages existing infrastructure  
 **Cons**: Requires lux modification
 
-### REVISED: Option D (Direct lux Modification)
+### FINAL: Option D (Unified lux Pipeline)
 
-**Decision**: After reviewing existing data products, lens plane replacement is NOT the best approach. Instead, we will:
+**Decision**: Build a unified pipeline that integrates replacement/BCM directly into the lux ray-tracing workflow. BCM must be applied to **all 20 snapshots** during ray-tracing.
 
-1. **Modify lux** to read pre-baryonified snapshot data (HDF5 format)
-2. **Create branch**: `git checkout -b hydro_replace` in `/mnt/home/mlee1/lux/`
-3. **Leverage existing halo-level BCM**: 519 halos already processed with Arico20
+**Branch**: `git checkout -b hydro_replace` in `/mnt/home/mlee1/lux/`
 
-**Why this approach?**
-- We already have per-halo BCM outputs (`/mnt/home/mlee1/ceph/baryonification_output/halos/`)
-- Full 3D coordinates preserved (no projection artifacts)
-- Can extend to multiple BCM models without re-running lux
-- Clean separation: BCM processing → snapshot replacement → ray-tracing
+---
 
-**Implementation**:
-1. Write `create_replaced_snapshot.py` that combines BCM halo outputs into full snapshot
-2. Modify `lux/read_hdf.cpp` to read our custom HDF5 format (or convert to TNG-like format)
-3. Run lux on replaced snapshots for each configuration
+## Dream Pipeline Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        LUX RAY-TRACING                              │
+│                                                                     │
+│  For each snapshot (20 total):                                      │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  1. LOAD TNG DATA                                           │   │
+│  │     - Load DMO particles (PartType1)                        │   │
+│  │     - Load hydro particles (PartType0,1,4) [for reference]  │   │
+│  │     - Load halo catalogs (matched DMO-Hydro pairs)          │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              │                                      │
+│                              ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  2. APPLY MODIFICATION (based on mode flag)                 │   │
+│  │                                                             │   │
+│  │     MODE = "DMO":     Use DMO particles as-is               │   │
+│  │     MODE = "HYDRO":   Use hydro particles as-is             │   │
+│  │     MODE = "REPLACE": Replace DMO halos with hydro particles│   │
+│  │     MODE = "BCM":     Apply BaryonForge BCM to DMO halos    │   │
+│  │                                                             │   │
+│  │     Parameters: mass_range, radius (1/3/5 × R_200)          │   │
+│  │                 bcm_model (Arico20, Schneider19, etc.)      │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              │                                      │
+│                              ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  3. SAVE INTERMEDIATE PRODUCTS                              │   │
+│  │                                                             │   │
+│  │     a) 2D Projected Maps (per snapshot, per axis):          │   │
+│  │        - Σ_dmo(x,y), Σ_hydro(x,y), Σ_replaced(x,y)         │   │
+│  │        - Σ_bcm(x,y) for each BCM model                      │   │
+│  │                                                             │   │
+│  │     b) 3D Power Spectra:                                    │   │
+│  │        - P(k) for DMO, hydro, replaced, BCM                 │   │
+│  │                                                             │   │
+│  │     c) Halo Profiles (out to 5×R_vir):                      │   │
+│  │        - ρ_dmo(r), ρ_hydro(r), ρ_bcm(r)                     │   │
+│  │        - Per mass bin or per-halo                           │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              │                                      │
+│                              ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  4. GENERATE LENS PLANES                                    │   │
+│  │     - Grid particles to 4096² surface density               │   │
+│  │     - 2 planes per snapshot                                 │   │
+│  │     - Apply lensing kernel                                  │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              │                                      │
+│                              ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  5. RAY-TRACING                                             │   │
+│  │     - Shoot rays through all 40 lens planes                 │   │
+│  │     - Compute deflection angles                             │   │
+│  │     - Output: κ(θ) convergence maps                         │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  6. SAVE RAY-TRACED OUTPUTS                                         │
+│     - κ_dmo(θ), κ_hydro(θ), κ_replaced(θ), κ_bcm(θ)                │
+│     - Multiple realizations (different projections/random seeds)    │
+└─────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  7. PEAK COUNT ANALYSIS                                             │
+│     - Smooth maps (1 arcmin Gaussian)                               │
+│     - Find local maxima                                             │
+│     - Compute n(ν) peak counts by S/N bin                           │
+│     - Compare: hydro vs replaced vs BCM                             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementation: Python Wrapper (Recommended)
+
+Write Python orchestrator that handles all modifications before/during lux:
+
+```python
+class HydroReplacePipeline:
+    """
+    Unified pipeline for ray-tracing with hydro replacement and BCM.
+    
+    Modes:
+        'dmo':     Pure DMO run (baseline)
+        'hydro':   Pure hydro run (truth)
+        'replace': DMO with hydro particles swapped in halos
+        'bcm':     DMO with BaryonForge BCM applied
+    """
+    
+    def __init__(self, config):
+        self.mode = config['mode']
+        self.bcm_model = config.get('bcm_model', 'Arico20')
+        self.mass_range = config['mass_range']  # e.g., (1e12, 1e16)
+        self.radius = config['radius']  # 1, 3, or 5 × R_200
+        self.snapshots = config['snapshots']  # All 20 for full run
+        
+    def run_full_pipeline(self):
+        """Execute the complete dream pipeline."""
+        
+        # Process each snapshot
+        for snap in self.snapshots:
+            self.process_snapshot(snap)
+        
+        # Run lux ray-tracing
+        self.run_lux()
+        
+        # Analyze outputs
+        self.analyze_peaks()
+        
+    def process_snapshot(self, snap_num):
+        """Process single snapshot: load, modify, save products."""
+        
+        # 1. Load particles and catalogs
+        dmo_particles = self.load_dmo(snap_num)
+        hydro_particles = self.load_hydro(snap_num)
+        matched_halos = self.load_matches(snap_num)
+        
+        # 2. Apply modification based on mode
+        if self.mode == 'dmo':
+            modified = dmo_particles
+        elif self.mode == 'hydro':
+            modified = hydro_particles
+        elif self.mode == 'replace':
+            modified = self.apply_replacement(
+                dmo_particles, hydro_particles, 
+                matched_halos, self.mass_range, self.radius
+            )
+        elif self.mode == 'bcm':
+            modified = self.apply_bcm(
+                dmo_particles, matched_halos, 
+                self.bcm_model, self.mass_range
+            )
+        
+        # 3. Save intermediate products
+        self.save_projected_map(modified, snap_num)
+        self.save_power_spectrum(modified, snap_num)
+        self.save_profiles(matched_halos, snap_num)
+        
+        # 4. Write snapshot for lux
+        self.write_lux_input(modified, snap_num)
+        
+    def apply_bcm(self, dmo_particles, halos, model_name, mass_range):
+        """Apply BaryonForge BCM to DMO halos."""
+        import BaryonForge as bfg
+        
+        # Initialize BCM model
+        if model_name == 'Arico20':
+            model = bfg.Profiles.Arico20.DarkMatterBaryon(**BCM_PARAMS)
+        elif model_name == 'Schneider19':
+            model = bfg.Profiles.Schneider19.DarkMatterBaryon(**BCM_PARAMS)
+        # ... etc
+        
+        # Create displacement interpolator
+        Displacement = bfg.Baryonification3D(DMO, model, cosmo)
+        Displacement.setup_interpolator(...)
+        
+        # Apply to each halo in mass range
+        for halo in halos:
+            if mass_range[0] < halo.mass < mass_range[1]:
+                dmo_particles = self.displace_halo_particles(
+                    dmo_particles, halo, Displacement
+                )
+        
+        return dmo_particles
+```
+
+---
+
+## Output Products
+
+### Per-Snapshot Outputs
+```
+/mnt/home/mlee1/ceph/hydro_replace/snap{NN}/
+├── projected_maps/
+│   ├── Sigma_{mode}_axis{0,1,2}.npz       # 2D surface density
+│   └── Pk_{mode}.npz                       # 3D power spectrum
+├── profiles/
+│   ├── profiles_dmo.h5                     # DMO ρ(r) per halo
+│   ├── profiles_hydro.h5                   # Hydro ρ(r) per halo
+│   └── profiles_bcm_{model}.h5             # BCM ρ(r) per halo
+└── lux_input/
+    └── snap_{NN}_modified.hdf5             # Modified particles for lux
+```
+
+### Ray-Tracing Outputs
+```
+/mnt/home/mlee1/ceph/lux_out/{mode}/
+├── kappa_maps/
+│   ├── kappa_real{00-09}.fits              # Convergence maps
+│   └── kappa_Cl.npz                        # Angular power spectra
+└── peaks/
+    ├── peak_catalog.csv                    # All detected peaks
+    └── peak_counts.npz                     # n(ν) histograms
+```
 
 ---
 
