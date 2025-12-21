@@ -199,74 +199,108 @@ def compute_radial_profile(coords, masses, center, r200, box_size, r_bins):
     return density, mass_enclosed, n_particles
 
 
-def load_particles_around_halos(basePath, snapNum, halo_positions, halo_radii, 
-                                 r_max_factor, box_size, particle_types, 
-                                 dm_mass=None, mass_unit=1e10):
+def load_particles_around_halo(basePath, snapNum, halo_position, halo_radius, 
+                                r_max_factor, box_size, particle_types, 
+                                dm_mass=None, mass_unit=1e10):
     """
-    Load particles within r_max_factor * R200 of each halo.
+    Load particles within r_max_factor * R200 of a SINGLE halo from ALL snapshot files.
     
-    Returns dict with 'coords' and 'masses' for each halo index.
+    This is the corrected version that streams through all files and collects
+    particles near the halo, handling periodic boundaries properly.
+    
+    Parameters:
+    -----------
+    basePath : str
+        Path to simulation output directory
+    snapNum : int
+        Snapshot number
+    halo_position : array (3,)
+        Halo center position in Mpc/h
+    halo_radius : float
+        R200c in Mpc/h
+    r_max_factor : float
+        Maximum radius in units of R200
+    box_size : float
+        Simulation box size in Mpc/h
+    particle_types : list
+        List of particle types to load (e.g., ['PartType1'] for DM)
+    dm_mass : float
+        DM particle mass (for fixed mass particles)
+    mass_unit : float
+        Factor to convert masses to Msun/h
+    
+    Returns:
+    --------
+    dict with 'coords' (N, 3) and 'masses' (N,)
     """
-    # Get file list
     snap_dir = f"{basePath}/snapdir_{snapNum:03d}/"
     files = sorted(glob.glob(f"{snap_dir}/snap_{snapNum:03d}.*.hdf5"))
     
-    # Distribute files across ranks
-    my_files = [f for i, f in enumerate(files) if i % size == rank]
+    r_max = r_max_factor * halo_radius
     
-    # Load all particles from my files
     coords_list = []
     masses_list = []
     
-    for filepath in my_files:
+    for filepath in files:
         with h5py.File(filepath, 'r') as f:
             for ptype in particle_types:
                 if ptype not in f:
                     continue
-                    
+                
+                # Load coordinates
                 c = f[ptype]['Coordinates'][:].astype(np.float32) / 1e3  # kpc -> Mpc
                 
-                if 'Masses' in f[ptype]:
-                    m = f[ptype]['Masses'][:].astype(np.float32) * mass_unit
-                else:
-                    # DM particles have fixed mass
-                    m = np.ones(len(c), dtype=np.float32) * dm_mass * mass_unit
+                # Apply periodic boundary and compute distance
+                dx = c - halo_position
+                dx = apply_periodic_boundary(dx, box_size)
+                dist = np.linalg.norm(dx, axis=1)
                 
-                coords_list.append(c)
+                # Select particles within r_max
+                mask = dist < r_max
+                if mask.sum() == 0:
+                    continue
+                
+                # Get masses
+                if 'Masses' in f[ptype]:
+                    m = f[ptype]['Masses'][mask].astype(np.float32) * mass_unit
+                else:
+                    m = np.full(mask.sum(), dm_mass * mass_unit, dtype=np.float32)
+                
+                coords_list.append(c[mask])
                 masses_list.append(m)
     
-    if len(coords_list) == 0:
-        all_coords = np.zeros((0, 3), dtype=np.float32)
-        all_masses = np.zeros(0, dtype=np.float32)
+    if len(coords_list) > 0:
+        return {
+            'coords': np.concatenate(coords_list),
+            'masses': np.concatenate(masses_list)
+        }
     else:
-        all_coords = np.concatenate(coords_list)
-        all_masses = np.concatenate(masses_list)
+        return {
+            'coords': np.zeros((0, 3), dtype=np.float32),
+            'masses': np.zeros(0, dtype=np.float32)
+        }
+
+
+def load_particles_around_halos(basePath, snapNum, halo_positions, halo_radii, 
+                                 r_max_factor, box_size, particle_types, 
+                                 dm_mass=None, mass_unit=1e10):
+    """
+    DEPRECATED: This function had a bug where files were distributed across MPI ranks
+    but halos could be far from the spatial region covered by those files.
     
-    # Build KD-tree for fast spatial queries
-    if len(all_coords) > 0:
-        tree = cKDTree(all_coords)
-    else:
-        tree = None
-    
-    # For each halo, find particles within r_max
+    Now calls load_particles_around_halo for each halo individually.
+    """
     halo_particles = {}
     
     for i, (pos, r200) in enumerate(zip(halo_positions, halo_radii)):
-        r_max = r_max_factor * r200
-        
-        if tree is not None:
-            idx = tree.query_ball_point(pos, r_max)
-            halo_particles[i] = {
-                'coords': all_coords[idx],
-                'masses': all_masses[idx]
-            }
-        else:
-            halo_particles[i] = {
-                'coords': np.zeros((0, 3), dtype=np.float32),
-                'masses': np.zeros(0, dtype=np.float32)
-            }
+        halo_particles[i] = load_particles_around_halo(
+            basePath, snapNum, pos, r200,
+            r_max_factor, box_size, particle_types,
+            dm_mass=dm_mass, mass_unit=mass_unit
+        )
     
     return halo_particles
+
 
 
 def main():
