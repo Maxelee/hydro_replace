@@ -516,7 +516,7 @@ def process_snapshot(args):
     # ========================================================================
     # Generate Replace 2D map
     # ========================================================================
-    replace_file = f"{snap_dir}/projected/replace.npz"
+    replace_file = f"{snap_dir}/projected/replace_{mass_label}.npz"
     skip_replace = only_bcm or (skip_existing and os.path.exists(replace_file))
     
     if skip_replace:
@@ -588,7 +588,7 @@ def process_snapshot(args):
     import gc
     
     for bcm_name in bcm_models:
-        bcm_file = f"{snap_dir}/projected/bcm_{bcm_name.lower()}.npz"
+        bcm_file = f"{snap_dir}/projected/bcm_{bcm_name.lower()}_{mass_label}.npz"
         
         # Skip if already exists
         if skip_existing and os.path.exists(bcm_file):
@@ -665,11 +665,12 @@ def process_snapshot(args):
             comm.Reduce(local_bcm_map, global_bcm_map, op=MPI.SUM, root=0)
             
             if rank == 0:
-                np.savez_compressed(f"{snap_dir}/projected/bcm_{bcm_name.lower()}.npz",
+                np.savez_compressed(bcm_file,
                                    field=global_bcm_map, box_size=CONFIG['box_size'],
                                    grid_resolution=grid_res, snapshot=snapNum,
-                                   bcm_model=bcm_name)
-                print(f"    Saved: bcm_{bcm_name.lower()}.npz ({time.time() - t_bcm_start:.1f}s)")
+                                   bcm_model=bcm_name, log_mass_min=log_mass_min,
+                                   log_mass_max=log_mass_max if log_mass_max else 'None')
+                print(f"    Saved: {bcm_file} ({time.time() - t_bcm_start:.1f}s)")
             
             # Free memory and force garbage collection between BCM models
             del bcm_model, local_bcm_map
@@ -684,7 +685,7 @@ def process_snapshot(args):
                 import traceback
                 traceback.print_exc()
                 # Save DMO map as fallback
-                np.savez_compressed(f"{snap_dir}/projected/bcm_{bcm_name.lower()}.npz",
+                np.savez_compressed(bcm_file,
                                    field=global_dmo_map, box_size=CONFIG['box_size'],
                                    grid_resolution=grid_res, snapshot=snapNum,
                                    bcm_model=bcm_name, error=str(e))
