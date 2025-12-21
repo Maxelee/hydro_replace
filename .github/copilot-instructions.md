@@ -91,8 +91,9 @@ Always use `sbatch` for MPI jobs. Login nodes are shared resources.
 
 ## Common Issues
 
-### Grid Size Mismatch in Lux
-- Ensure `LP_grid` and `RT_grid` in lux config match density file grid size
+### Grid Size Configuration in Lux
+- `LP_grid` (lens potential): Should be 4096 for high-resolution lens planes
+- `RT_grid` (ray-tracing): Should be 1024 for ray-tracing output
 - Density files are written with grid size in header (int32)
 
 ### Missing config.dat for Lux
@@ -103,24 +104,41 @@ Always use `sbatch` for MPI jobs. Login nodes are shared resources.
 - BCM can produce NaN at box corners (periodic boundary issues)
 - Replace with 0 before writing density files
 
-## Key Snapshots for TNG
+## Ray-Tracing Snapshot List (20 snapshots)
 
-| Snapshot | Redshift | Scale Factor |
-|----------|----------|--------------|
-| 99 | 0.00 | 1.000 |
-| 91 | 0.10 | 0.909 |
-| 84 | 0.20 | 0.833 |
-| 78 | 0.30 | 0.769 |
-| 72 | 0.40 | 0.714 |
-| 67 | 0.50 | 0.667 |
-| 59 | 0.70 | 0.588 |
-| 50 | 1.00 | 0.500 |
-| 40 | 1.50 | 0.400 |
-| 33 | 2.00 | 0.333 |
+The standard snapshot list for ray-tracing uses 20 snapshots from z≈2 to z=0:
+
+```
+snapshot_list = 96, 90, 85, 80, 76, 71, 67, 63, 59, 56, 52, 49, 46, 43, 41, 38, 35, 33, 31, 29
+snapshot_stack = false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true
+```
+
+| Snapshot | Redshift | Stack |
+|----------|----------|-------|
+| 96 | 0.02 | false |
+| 90 | 0.10 | false |
+| 85 | 0.18 | false |
+| 80 | 0.27 | false |
+| 76 | 0.35 | false |
+| 71 | 0.46 | false |
+| 67 | 0.55 | false |
+| 63 | 0.65 | false |
+| 59 | 0.76 | false |
+| 56 | 0.85 | false |
+| 52 | 0.97 | true |
+| 49 | 1.08 | true |
+| 46 | 1.21 | true |
+| 43 | 1.36 | true |
+| 41 | 1.47 | true |
+| 38 | 1.63 | true |
+| 35 | 1.82 | true |
+| 33 | 1.97 | true |
+| 31 | 2.14 | true |
+| 29 | 2.32 | true |
 
 ## Testing
 
 For quick tests, use L205n625TNG with:
 - `TEST=1` environment variable
-- Single snapshot (e.g., snap 99)
-- `GRID_RES=1024` (reduced from 4096)
+- Single snapshot (e.g., snap 96)
+- Default grid sizes: LP_GRID=4096, RT_GRID=1024

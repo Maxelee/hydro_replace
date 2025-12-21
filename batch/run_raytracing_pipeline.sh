@@ -23,7 +23,8 @@ set -e
 
 # Configuration
 SIM_RES=${1:-${SIM_RES:-625}}
-GRID_RES=${GRID_RES:-4096}
+LP_GRID=${LP_GRID:-4096}
+RT_GRID=${RT_GRID:-1024}
 SEED=${SEED:-2020}
 TEST=${TEST:-0}
 
@@ -38,7 +39,8 @@ echo "=============================================="
 echo "FULL RAY-TRACING PIPELINE"
 echo "=============================================="
 echo "Simulation: ${SIM_NAME}"
-echo "Grid resolution: ${GRID_RES}"
+echo "LP grid resolution: ${LP_GRID}"
+echo "RT grid resolution: ${RT_GRID}"
 echo "Random seed: ${SEED}"
 echo "Test mode: ${TEST}"
 echo "=============================================="
@@ -64,7 +66,6 @@ fi
 if [ "$TEST" == "1" ]; then
     SNAP=96
     TIME="01:00:00"
-    # Keep GRID_RES as specified (default 4096) - don't override in test mode
 else
     SNAP=all
 fi
@@ -89,14 +90,14 @@ if [ "${SKIP_LENSPLANES:-0}" != "1" ]; then
     
     # DMO
     echo "Submitting DMO..."
-    JOB=$(SIM_RES=$SIM_RES MODEL=dmo SNAP=$SNAP SEED=$SEED GRID_RES=$GRID_RES \
+    JOB=$(SIM_RES=$SIM_RES MODEL=dmo SNAP=$SNAP SEED=$SEED GRID_RES=$LP_GRID \
           sbatch -N $NODES -n $TASKS -t $TIME batch/run_lensplanes.sh | awk '{print $NF}')
     JOBS+=("$JOB")
     echo "  Job ID: $JOB"
     
     # Hydro
     echo "Submitting Hydro..."
-    JOB=$(SIM_RES=$SIM_RES MODEL=hydro SNAP=$SNAP SEED=$SEED GRID_RES=$GRID_RES \
+    JOB=$(SIM_RES=$SIM_RES MODEL=hydro SNAP=$SNAP SEED=$SEED GRID_RES=$LP_GRID \
           sbatch -N $NODES -n $TASKS -t $TIME batch/run_lensplanes.sh | awk '{print $NF}')
     JOBS+=("$JOB")
     echo "  Job ID: $JOB"
@@ -104,7 +105,7 @@ if [ "${SKIP_LENSPLANES:-0}" != "1" ]; then
     # Replace with different mass cuts
     for MASS_MIN in 12.0 12.5 13.0; do
         echo "Submitting Replace (M > 10^${MASS_MIN})..."
-        JOB=$(SIM_RES=$SIM_RES MODEL=replace MASS_MIN=$MASS_MIN SNAP=$SNAP SEED=$SEED GRID_RES=$GRID_RES \
+        JOB=$(SIM_RES=$SIM_RES MODEL=replace MASS_MIN=$MASS_MIN SNAP=$SNAP SEED=$SEED GRID_RES=$LP_GRID \
               sbatch -N $NODES -n $TASKS -t $TIME batch/run_lensplanes.sh | awk '{print $NF}')
         JOBS+=("$JOB")
         echo "  Job ID: $JOB"
@@ -112,7 +113,7 @@ if [ "${SKIP_LENSPLANES:-0}" != "1" ]; then
     
     # BCM (all three models in one job)
     echo "Submitting BCM (all 3 models)..."
-    JOB=$(SIM_RES=$SIM_RES MODEL=bcm SNAP=$SNAP SEED=$SEED GRID_RES=$GRID_RES \
+    JOB=$(SIM_RES=$SIM_RES MODEL=bcm SNAP=$SNAP SEED=$SEED GRID_RES=$LP_GRID \
           sbatch -N $NODES -n $TASKS -t $TIME batch/run_lensplanes.sh | awk '{print $NF}')
     JOBS+=("$JOB")
     echo "  Job ID: $JOB"
@@ -176,7 +177,7 @@ RT_output_dir = ${OUTPUT_DIR}
 simulation_format = PreProjected
 
 # Lens potential calculation
-LP_grid = ${GRID_RES}
+LP_grid = ${LP_GRID}
 LP_random_seed = ${SEED}
 planes_per_snapshot = 2
 projection_direction = 3
@@ -187,10 +188,10 @@ snapshot_list = ${SNAP_LIST}
 snapshot_stack = ${SNAP_STACK}
 
 # Ray-tracing
-RT_grid = ${GRID_RES}
+RT_grid = ${RT_GRID}
 RT_random_seed = ${SEED}
-RT_randomization = false
-angle = 3.5
+RT_randomization = true
+angle = 5.0
 
 verbose = true
 EOF
