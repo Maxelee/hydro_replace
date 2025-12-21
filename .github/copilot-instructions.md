@@ -1,153 +1,126 @@
-# Hydro Replace Project - Copilot Instructions
+# Copilot Instructions for hydro_replace2
 
 ## Project Overview
 
-This is a PhD research project analyzing baryonic effects on weak lensing observables using hydrodynamic simulation replacement techniques. The project uses TNG-300 simulations (hydro and dark-matter-only) from IllustrisTNG and will extend to CAMELS multi-simulation suites.
+This project generates 2D projected density maps and ray-tracing outputs comparing different cosmological simulation methods:
+- **DMO**: Dark Matter Only simulations
+- **Hydro**: Full hydrodynamic simulations (IllustrisTNG)
+- **Replace**: Hybrid method replacing DMO halos with matched Hydro counterparts
+- **BCM**: Baryonic Correction Models (Arico+20, Schneider+19, Schneider+25)
 
-## Cluster Environment
+The pipeline supports weak lensing analysis via integration with the `lux` ray-tracing code.
 
-### Virtual Environment
-**Always activate before running scripts:**
-```bash
-source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
-```
+## Key Directories
 
-### SLURM Job Submission
-Located on the Flatiron CCA cluster. Example batch script template:
-```bash
-#!/bin/bash
-#SBATCH -p cca
-#SBATCH --constraint=icelake
-#SBATCH -J job_name
-#SBATCH -n 16
-#SBATCH -N 10
-#SBATCH --exclusive
-#SBATCH -o OUTPUT.o%j
-#SBATCH -e OUTPUT.e%j
-#SBATCH --mail-user=mlee@flatironinstitute.org
-#SBATCH --mail-type=ALL
-#SBATCH -t 06-23:15:00
+- `scripts/` - Main Python scripts (MPI-parallel)
+- `batch/` - SLURM job submission scripts
+- `config/` - YAML configuration files
+- `notebooks/` - Jupyter notebooks for analysis
+- `logs/` - SLURM output logs
+- `archive/` - Old/deprecated code for reference
 
-module load python openmpi python-mpi hdf5
-source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
-srun -n16 python3 -u script.py
-```
+## Important Scripts
 
-### Ray-Tracing (lux)
-C++ ray-tracing code located at `/mnt/home/mlee1/lux/`
-- **Executable**: `/mnt/home/mlee1/lux/lux`
-- **Config files**: `*.ini` files in the lux directory
-- **Output**: `/mnt/home/mlee1/ceph/lux_out/`
-- **Dependencies**: MPI, HDF5, FFTW3, GSL, Boost (MPI + serialization)
+### Core Pipeline
+- `scripts/generate_all.py` - Main MPI pipeline for density maps
+- `scripts/generate_matches_fast.py` - Bijective halo matching (DMO ↔ Hydro)
+- `scripts/generate_profiles.py` - Radial density profiles around halos
+- `scripts/generate_lensplanes.py` - Generate lens planes for ray-tracing
 
-## Key Technical Context
+### Ray-Tracing Integration
+- `scripts/generate_lux_configs.py` - Generate lux configuration files
+- `batch/run_raytracing_pipeline.sh` - Full ray-tracing orchestration
 
-### Simulations
-- **TNG-300 Hydro**: `/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG/output`
-- **TNG-300 DMO**: `/mnt/sdceph/users/sgenel/IllustrisTNG/L205n2500TNG_DM/output`
-- **Box size**: 205 Mpc/h
-- **Snapshot 99**: z = 0 (primary analysis snapshot)
-- **DM particle mass (DMO)**: 0.0047271638660809 × 10¹⁰ M☉/h
-- **DM particle mass (Hydro)**: 0.00398342749867548 × 10¹⁰ M☉/h
+## External Dependencies
 
-### Existing Data Products
-Pre-computed pixelized replacement maps are at: `/mnt/home/mlee1/ceph/pixelized/`
+### Simulation Data
+- Location: `/mnt/sdceph/users/sgenel/IllustrisTNG/`
+- Simulations: L205n625TNG, L205n1250TNG, L205n2500TNG (and _DM variants)
+- Access via `illustris_python` package
 
-Files follow naming: `pixelized_maps_res{RES}_axis{AXIS}_{MODE}_rad{RADIUS}_mass{MASS_LABEL}.npz`
-- Resolutions: 4096
-- Modes: `normal` (replace DMO with hydro), `inverse` (reverse)
-- Radii: 1, 3, 5 (× R_200c)
-- Mass bins: 10.0-12.5, 12.5-13.0, 13.0-13.5, 13.5-14.0, gt14.0, cumulative variants
+### Lux Ray-Tracing Code
+- Location: `/mnt/home/mlee1/lux/`
+- Config format: Simple key-value pairs (NO section headers like `[path]`)
+- Valid parameters: `input_dir`, `LP_output_dir`, `RT_output_dir`, `simulation_format`, `LP_grid`, `RT_grid`, `planes_per_snapshot`, `projection_direction`, `translation_rotation`, `LP_random_seed`, `RT_random_seed`, `RT_randomization`, `angle`, `verbose`, `snapshot_list`, `snapshot_stack`
+- `snapshot_list`: comma-separated integers
+- `snapshot_stack`: comma-separated `true`/`false` (NOT 0/1)
+- Has two phases: lenspot (lens potential) and raytracing
 
-### Key Libraries
-- `illustris_python`: TNG data loading
-- `MAS_library` / `Pylians3`: Mass assignment and power spectra
-- `mpi4py`: Parallel processing
-- `scipy.spatial.cKDTree`: Fast spatial queries
-- `BaryonForge`: BCM implementation (Arico+2020)
-- `h5py`: HDF5 file handling
+### Output Locations
+- Density fields: `/mnt/home/mlee1/ceph/hydro_replace_fields/`
+- Lens planes: `/mnt/home/mlee1/ceph/hydro_replace_lensplanes/`
+- Lux output: `/mnt/home/mlee1/ceph/lux_out/`
 
-## Code Style Guidelines
+## Coding Conventions
 
-### Python
-- Use type hints for function parameters and return values
-- Prefer numpy operations over loops
-- Use dataclasses for configuration objects
-- Follow MPI patterns: rank 0 does I/O, broadcast/gather for communication
-- Log with rank-aware logging (only rank 0 prints by default)
+### MPI Usage
+- All parallel scripts use `mpi4py`
+- Rank 0 handles I/O and coordination
+- Use `comm.Reduce` with contiguous arrays (`.copy()` if needed)
+- Always barrier before collective operations
 
-### File Organization
-- `src/hydro_replace/`: Core package modules
-- `scripts/`: Pipeline scripts (numbered 01-08)
-- `config/`: YAML configuration files
-- `notebooks/`: Exploratory Jupyter notebooks
-- `tests/`: Unit tests
+### Mass Assignment
+- Use TSC (Triangular Shaped Cloud) for density fields to match lux
+- Grid wrapping handled with modulo operations
 
-### Configuration
-Use YAML config files in `config/`:
-- `simulation_paths.yaml`: File paths and cosmology
-- `analysis_params.yaml`: Mass bins, radii, output directories
-- `raytrace_config.yaml`: Ray-tracing parameters
-
-## Common Tasks
-
-### Loading TNG Data
-```python
-from hydro_replace.data.load_simulations import SimulationData
-from hydro_replace.data.halo_catalogs import HaloCatalog
-
-sim = SimulationData('/path/to/simulation')
-catalog = HaloCatalog(sim, snapshot=99)
-```
-
-### Running Pipeline Scripts
-```bash
-# Sequential (for testing)
-python scripts/01_prepare_data.py
-
-# MPI parallel (for production)
-mpirun -np 16 python scripts/01_prepare_data.py
-```
-
-### Computing Power Spectra
-```python
-from hydro_replace.analysis.power_spectrum import compute_power_spectrum
-
-k, Pk = compute_power_spectrum(density_field, box_size=205.0)
-```
-
-## Important Conventions
+### File Formats
+- `.npz` for 2D density maps (key: `field`)
+- `.h5` for profiles and complex data structures
+- Binary for lux: `int32(grid_size) + float64[N×N](delta×dz) + int32(grid_size)`
 
 ### Units
-- Masses: M☉/h (stored as 10¹⁰ M☉/h in simulation files)
-- Distances: Mpc/h (positions in simulation files are kpc/h)
-- Power spectra: (Mpc/h)³
+- Positions: Mpc/h (or kpc/h, check context)
+- Masses: M_sun/h (usually stored as 10^10 M_sun/h, multiply by 1e10)
+- Box size: 205 Mpc/h for L205n* simulations
 
-### Mass Bins (log₁₀ M☉/h)
-- Regular: 12.0-12.5, 12.5-13.0, 13.0-13.5, 13.5-14.0, 14.0-14.5, >14.5
-- Cumulative: >10¹², >10¹³, >10¹⁴
+## SLURM Job Submission
 
-### Replacement Radii
-- 1× R_200c: Halo interior
-- 3× R_200c: Includes 1-halo term  
-- 5× R_200c: Full profile + 2-halo contribution
+### Environment Setup
+```bash
+module load python openmpi hdf5 fftw gsl boost/mpi-1.84.0
+source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
+```
 
-## Debugging Tips
+### Typical Resources
+- 625 resolution: 4 nodes, 64 tasks, 4 hours
+- 1250 resolution: 8 nodes, 128 tasks, 8 hours
+- 2500 resolution: 16 nodes, 256 tasks, 12 hours
 
-1. **Memory issues**: Use chunked loading, reduce grid resolution for testing
-2. **MPI deadlocks**: Check all ranks reach barriers/collectives
-3. **Wrong units**: Always verify factor of 1e3 for kpc↔Mpc, 1e10 for mass
-4. **Periodic boundaries**: Use `periodic_distance` utilities
+### Important: Never Run MPI Jobs on Login Nodes
+Always use `sbatch` for MPI jobs. Login nodes are shared resources.
 
-## References
+## Common Issues
 
-- Miller+2025 (arXiv:2511.10634): Mass redistribution validation
-- Arico+2020, 2021: BCM model
-- Lee+2023 (MNRAS 519:573): Peak statistics methodology
-- Villaescusa-Navarro+2021: CAMELS overview
+### Grid Size Mismatch in Lux
+- Ensure `LP_grid` and `RT_grid` in lux config match density file grid size
+- Density files are written with grid size in header (int32)
 
-## Project Timeline
+### Missing config.dat for Lux
+- Lux needs `config.dat` from lens plane generation
+- Copy from DMO directory if missing for other models
 
-- Paper 1: Power spectrum + peaks (TNG-300 replacement)
-- Paper 2: Multi-BCM comparison  
-- Paper 3: CAMELS parameter emulator
+### NaN Values in BCM
+- BCM can produce NaN at box corners (periodic boundary issues)
+- Replace with 0 before writing density files
+
+## Key Snapshots for TNG
+
+| Snapshot | Redshift | Scale Factor |
+|----------|----------|--------------|
+| 99 | 0.00 | 1.000 |
+| 91 | 0.10 | 0.909 |
+| 84 | 0.20 | 0.833 |
+| 78 | 0.30 | 0.769 |
+| 72 | 0.40 | 0.714 |
+| 67 | 0.50 | 0.667 |
+| 59 | 0.70 | 0.588 |
+| 50 | 1.00 | 0.500 |
+| 40 | 1.50 | 0.400 |
+| 33 | 2.00 | 0.333 |
+
+## Testing
+
+For quick tests, use L205n625TNG with:
+- `TEST=1` environment variable
+- Single snapshot (e.g., snap 99)
+- `GRID_RES=1024` (reduced from 4096)

@@ -1,6 +1,16 @@
 # Hydro Replace
 
-Generate 2D projected density maps comparing DMO, Hydro, Replace, and BCM methods for TNG simulations.
+Generate 2D projected density maps and weak lensing ray-tracing outputs comparing DMO, Hydro, Replace, and BCM methods for IllustrisTNG simulations.
+
+## Overview
+
+This pipeline compares different methods for modeling baryonic effects on matter distribution:
+- **DMO**: Dark Matter Only simulations
+- **Hydro**: Full hydrodynamic simulations (IllustrisTNG)  
+- **Replace**: Hybrid method replacing DMO halos with matched Hydro counterparts
+- **BCM**: Baryonic Correction Models (Arico+20, Schneider+19, Schneider+25)
+
+Includes integration with the **lux** ray-tracing code for weak lensing analysis.
 
 ## Quick Start
 
@@ -8,9 +18,12 @@ Generate 2D projected density maps comparing DMO, Hydro, Replace, and BCM method
 # Activate environment
 source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
 
-# Submit a job for snapshot 99
-cd batch
-sbatch --export=SNAP=99,SIM_RES=2500 run_full_pipeline.sh
+# Generate density maps for snapshot 99
+sbatch --export=SNAP=99,SIM_RES=2500 batch/run_full_pipeline.sh
+
+# Full ray-tracing pipeline (lens planes + lux)
+TEST=1 ./batch/run_raytracing_pipeline.sh 625  # Test with low-res
+./batch/run_raytracing_pipeline.sh 2500        # Production
 ```
 
 ## Structure
@@ -18,16 +31,22 @@ sbatch --export=SNAP=99,SIM_RES=2500 run_full_pipeline.sh
 ```
 hydro_replace2/
 ├── batch/
-│   └── run_full_pipeline.sh    # SLURM job submission
+│   ├── run_full_pipeline.sh       # Density map generation
+│   ├── run_raytracing_pipeline.sh # Full ray-tracing orchestration
+│   ├── run_lensplanes.sh          # Lens plane generation only
+│   └── run_profiles.sh            # Radial profile generation
 ├── scripts/
-│   ├── generate_all.py         # Main pipeline (MPI)
-│   └── generate_matches_fast.py # Halo matching
+│   ├── generate_all.py            # Main density map pipeline (MPI)
+│   ├── generate_matches_fast.py   # Bijective halo matching (DMO ↔ Hydro)
+│   ├── generate_lensplanes.py     # Lens planes for ray-tracing (MPI)
+│   ├── generate_profiles.py       # Radial density profiles (MPI)
+│   └── generate_lux_configs.py    # Lux configuration generator
 ├── notebooks/
-│   ├── analyze_results.ipynb   # Power spectra & visualization
-│   └── power_by_mass.ipynb     # Mass-binned analysis
-├── config/                     # YAML configuration files
-├── logs/                       # SLURM output logs
-└── archive/                    # Old/unused code (for reference)
+│   ├── analyze_results.ipynb      # Power spectra & visualization
+│   └── power_by_mass.ipynb        # Mass-binned analysis
+├── config/                        # YAML configuration files
+├── logs/                          # SLURM output logs
+└── archive/                       # Old/deprecated code (for reference)
 ```
 
 ## Usage
@@ -63,6 +82,7 @@ sbatch --export=SNAP=99,SIM_RES=2500,MASS_MIN=13.0,MASS_MAX=14.0 batch/run_full_
 
 ## Output
 
+### Density Maps
 Located at `/mnt/home/mlee1/ceph/hydro_replace_fields/`:
 
 ```
@@ -77,18 +97,41 @@ L205n{RES}TNG/
     │   ├── bcm_arico20.npz     # BCM Arico+20 map
     │   ├── bcm_schneider19.npz # BCM Schneider+19 map
     │   └── bcm_schneider25.npz # BCM Schneider+25 map
-    └── profiles.h5             # Halo info
+    └── profiles_Mgt*.h5        # Radial density profiles
+```
+
+### Ray-Tracing Output
+Located at `/mnt/home/mlee1/ceph/lux_out/`:
+
+```
+L205n{RES}TNG/
+├── dmo/
+│   ├── lux_dmo.ini             # Lux configuration
+│   ├── config.dat              # Ray-tracing config
+│   ├── lenspot01.dat - 40.dat  # Lens potential maps
+│   └── run001-100/             # Ray-tracing realizations
+│       ├── kappa*.dat          # Convergence maps
+│       └── gamma*.dat          # Shear maps
+├── hydro/
+├── replace_Mgt12.0/
+├── bcm_arico20/
+└── ...
 ```
 
 ## Key Snapshots
 
-| Snapshot | Redshift |
-|----------|----------|
-| 99 | 0.00 |
-| 76 | 0.50 |
-| 59 | 1.07 |
-| 49 | 1.50 |
-| 40 | 1.93 |
+| Snapshot | Redshift | Scale Factor |
+|----------|----------|--------------|
+| 99 | 0.00 | 1.000 |
+| 91 | 0.10 | 0.909 |
+| 84 | 0.20 | 0.833 |
+| 78 | 0.30 | 0.769 |
+| 72 | 0.40 | 0.714 |
+| 67 | 0.50 | 0.667 |
+| 59 | 0.70 | 0.588 |
+| 50 | 1.00 | 0.500 |
+| 40 | 1.50 | 0.400 |
+| 33 | 2.00 | 0.333 |
 
 ## Memory Requirements
 
