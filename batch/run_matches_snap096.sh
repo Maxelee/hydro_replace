@@ -1,29 +1,26 @@
 #!/bin/bash
 #SBATCH -p cca
 #SBATCH --constraint=icelake
-#SBATCH -J gen_matches
+#SBATCH -J gen_match_96
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH -o /mnt/home/mlee1/hydro_replace2/logs/matches_%A_%a.o
-#SBATCH -e /mnt/home/mlee1/hydro_replace2/logs/matches_%A_%a.e
-#SBATCH -t 06:00:00
-#SBATCH --array=0-7
+#SBATCH --mem=64G
+#SBATCH -o /mnt/home/mlee1/hydro_replace2/logs/matches_snap096_%j.o
+#SBATCH -e /mnt/home/mlee1/hydro_replace2/logs/matches_snap096_%j.e
+#SBATCH -t 04:00:00
 
 # ==============================================================================
-# Generate matches for remaining missing snapshots
-# Uses array job to parallelize across snapshots
+# Generate matches for snapshot 96 (missing)
 # ==============================================================================
 
-# Snapshots still missing (as of Dec 21, 2025)
-SNAPSHOTS=(52 56 63 67 71 80 85 90 96)
-SNAP=${SNAPSHOTS[$SLURM_ARRAY_TASK_ID]}
-
+SNAP=96
 SIM_RES=${SIM_RES:-2500}
 OUTPUT_DIR=${OUTPUT_DIR:-/mnt/home/mlee1/ceph/hydro_replace_fields}
 
 # Setup environment
-module load modules/2.4-20250724
-module load python hdf5
+module purge
+module load python openmpi python-mpi
+module load hdf5
 source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
 
 cd /mnt/home/mlee1/hydro_replace2/scripts
@@ -38,4 +35,7 @@ python -u generate_matches_fast.py \
     --resolution $SIM_RES \
     --output-dir $OUTPUT_DIR
 
-echo "Done with snapshot $SNAP"
+echo ""
+echo "=============================================="
+echo "Completed matches for snapshot $SNAP"
+echo "=============================================="

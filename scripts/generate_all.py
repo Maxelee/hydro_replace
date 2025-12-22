@@ -75,16 +75,21 @@ COSMO = ccl.Cosmology(
 )
 h = COSMO.cosmo.params.h
 
-# BCM Parameters - from BaryonForge test defaults
+# BCM Parameters - from original publications
 BCM_PARAMS = {
+    # Arico+20 fiducial values from Table 1 of the paper (Lu et al. calibration)
     'Arico20': dict(
-        M_c=0.23e14/h, eta=0.14, mu=0.31, beta=4.09,
-        M_inn=3.3e13/h, theta_inn=0.1, theta_out=5,
-        M1_0=0.22e11/h, epsilon_h=0.015, alpha_g=2,
+        M_c=3.3e13,       # h^-1 Msun (fiducial from paper)
+        M1_0=8.63e11,     # h^-1 Msun (fiducial from paper)
+        eta=0.54,         # star formation efficiency (fiducial)
+        beta=0.12,        # gas profile slope (fiducial)
+        mu=0.31, M_inn=3.3e13, theta_inn=0.1, theta_out=3,
+        epsilon_h=0.015, alpha_g=2,
         epsilon_hydro=np.sqrt(5), theta_rg=0.3, sigma_rg=0.1,
         a=0.3, n=2, p=0.3, q=0.707,
         alpha_fsat=1, M1_fsat=1, delta_fsat=1, gamma_fsat=1, eps_fsat=1,
-        M_r=1e30, beta_r=2,
+        M_r=1e16, beta_r=2,
+        A_nt=0.495, alpha_nt=0.1,  # non-thermal pressure
     ),
     'Schneider19': dict(
         # Gas parameters
