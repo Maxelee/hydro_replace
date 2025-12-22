@@ -324,6 +324,9 @@ def process_snapshot(args):
     log_mass_max = getattr(args, 'mass_max', None)
     skip_existing = getattr(args, 'skip_existing', False)
     only_bcm = getattr(args, 'only_bcm', False)
+    skip_bcm = getattr(args, 'skip_bcm', False)
+    skip_replace = getattr(args, 'skip_replace', False)
+    skip_dmo_hydro = getattr(args, 'skip_dmo_hydro', False)
     bcm_models = getattr(args, 'bcm_models', ['Arico20', 'Schneider19', 'Schneider25'])
     
     sim_config = SIM_PATHS[sim_res]
@@ -353,7 +356,8 @@ def process_snapshot(args):
         else:
             print(f"Mass cut: log10(M) > {log_mass_min}")
         print(f"Skip existing: {skip_existing}")
-        print(f"Only BCM: {only_bcm}")
+        print(f"Only BCM: {only_bcm}, Skip BCM: {skip_bcm}")
+        print(f"Skip Replace: {skip_replace}, Skip DMO/Hydro: {skip_dmo_hydro}")
         print(f"BCM models: {bcm_models}")
         print(f"Output: {snap_dir}")
         print("=" * 70)
@@ -457,11 +461,11 @@ def process_snapshot(args):
     # Generate DMO 2D map
     # ========================================================================
     dmo_file = f"{snap_dir}/projected/dmo.npz"
-    skip_dmo = only_bcm or (skip_existing and os.path.exists(dmo_file))
+    skip_dmo = only_bcm or skip_dmo_hydro or (skip_existing and os.path.exists(dmo_file))
     
     if skip_dmo:
         if rank == 0:
-            print(f"\n[3/6] Skipping DMO map (exists or only_bcm mode)")
+            print(f"\n[3/6] Skipping DMO map (exists or skip flag)")
             if os.path.exists(dmo_file):
                 global_dmo_map = np.load(dmo_file)['field']
     else:
@@ -487,11 +491,11 @@ def process_snapshot(args):
     # Generate Hydro 2D map
     # ========================================================================
     hydro_file = f"{snap_dir}/projected/hydro.npz"
-    skip_hydro = only_bcm or (skip_existing and os.path.exists(hydro_file))
+    skip_hydro = only_bcm or skip_dmo_hydro or (skip_existing and os.path.exists(hydro_file))
     
     if skip_hydro:
         if rank == 0:
-            print(f"\n[4/6] Skipping Hydro map (exists or only_bcm mode)")
+            print(f"\n[4/6] Skipping Hydro map (exists or skip flag)")
             if os.path.exists(hydro_file):
                 global_hydro_map = np.load(hydro_file)['field']
     else:
@@ -517,11 +521,11 @@ def process_snapshot(args):
     # Generate Replace 2D map
     # ========================================================================
     replace_file = f"{snap_dir}/projected/replace_{mass_label}.npz"
-    skip_replace = only_bcm or (skip_existing and os.path.exists(replace_file))
+    skip_replace_flag = only_bcm or skip_replace or (skip_existing and os.path.exists(replace_file))
     
-    if skip_replace:
+    if skip_replace_flag:
         if rank == 0:
-            print(f"\n[5/6] Skipping Replace map (exists or only_bcm mode)")
+            print(f"\n[5/6] Skipping Replace map (exists or skip flag)")
     else:
         if rank == 0:
             print("\n[5/6] Generating Replace 2D map...")
@@ -575,121 +579,125 @@ def process_snapshot(args):
     # ========================================================================
     # Generate BCM maps and profiles
     # ========================================================================
-    if rank == 0:
-        print("\n[6/6] Generating BCM maps...")
-    
-    cdict = build_cosmodict(COSMO)
-    
-    # Each rank processes its own particles locally, then we reduce the maps
-    # This avoids the memory bottleneck of gathering all particles to rank 0
-    
-    # Process each BCM model SEQUENTIALLY to manage memory
-    # Free memory between models using gc.collect()
-    import gc
-    
-    for bcm_name in bcm_models:
-        bcm_file = f"{snap_dir}/projected/bcm_{bcm_name.lower()}_{mass_label}.npz"
-        
-        # Skip if already exists
-        if skip_existing and os.path.exists(bcm_file):
-            if rank == 0:
-                print(f"\n  Skipping BCM {bcm_name} (exists)")
-            continue
-        
+    if skip_bcm:
         if rank == 0:
-            print(f"\n  Processing BCM: {bcm_name}")
-            t_bcm_start = time.time()
+            print("\n[6/6] Skipping BCM maps (--skip-bcm flag)")
+    else:
+        if rank == 0:
+            print("\n[6/6] Generating BCM maps...")
         
-        try:
-            # Setup BCM model on all ranks
-            bcm_model = setup_bcm_model(bcm_name)
+        cdict = build_cosmodict(COSMO)
+        
+        # Each rank processes its own particles locally, then we reduce the maps
+        # This avoids the memory bottleneck of gathering all particles to rank 0
+        
+        # Process each BCM model SEQUENTIALLY to manage memory
+        # Free memory between models using gc.collect()
+        import gc
+        
+        for bcm_name in bcm_models:
+            bcm_file = f"{snap_dir}/projected/bcm_{bcm_name.lower()}_{mass_label}.npz"
             
-            # Each rank creates a snapshot with its LOCAL particles
-            if len(dmo_coords) > 0:
-                # Wrap coordinates to [0, box_size) to avoid KDTree periodic boundary errors
-                box = CONFIG['box_size']
-                wrapped_coords = dmo_coords % box
-                
-                Snap = bfg.ParticleSnapshot(
-                    x=wrapped_coords[:, 0].astype(np.float64),
-                    y=wrapped_coords[:, 1].astype(np.float64),
-                    z=wrapped_coords[:, 2].astype(np.float64),
-                    L=box,
-                    redshift=0,
-                    cosmo=cdict,
-                    M=dmo_masses[0] if len(dmo_masses) > 0 else dmo_mass * CONFIG['mass_unit']
-                )
-                
-                # Use ALL halos (BaryonForge handles periodic boundaries)
-                HCat = bfg.HaloNDCatalog(
-                    x=halo_positions[:, 0],
-                    y=halo_positions[:, 1],
-                    z=halo_positions[:, 2],
-                    M=halo_masses,
-                    redshift=0,
-                    cosmo=cdict
-                )
-                
-                # Create runner and process
-                # epsilon_max=5 ensures we capture the full BCM effect out to ~5 R_200
-                # (Schneider models have extended profiles)
-                Runner = bfg.Runners.BaryonifySnapshot(
-                    HCat, Snap, epsilon_max=5.0, model=bcm_model,
-                    KDTree_kwargs={'leafsize': 1000, 'balanced_tree': False},
-                    verbose=(rank == 0)
-                )
-                
-                Baryonified = Runner.process()
-                
-                bcm_coords_local = np.array([
-                    Baryonified['x'][:],
-                    Baryonified['y'][:],
-                    Baryonified['z'][:]
-                ]).T.astype(np.float32)
-                
-                # Project local BCM particles to 2D
-                local_bcm_map = project_to_2d_fast(bcm_coords_local, dmo_masses,
-                                                   CONFIG['box_size'], grid_res)
-                
-                # Free BCM-specific memory immediately
-                del bcm_coords_local, Baryonified, Runner, Snap, HCat, wrapped_coords
-            else:
-                local_bcm_map = np.zeros((grid_res, grid_res), dtype=np.float32)
-            
-            # Reduce all local maps to rank 0
-            if rank == 0:
-                global_bcm_map = np.zeros((grid_res, grid_res), dtype=np.float32)
-            else:
-                global_bcm_map = None
-            
-            comm.Reduce(local_bcm_map, global_bcm_map, op=MPI.SUM, root=0)
+            # Skip if already exists
+            if skip_existing and os.path.exists(bcm_file):
+                if rank == 0:
+                    print(f"\n  Skipping BCM {bcm_name} (exists)")
+                continue
             
             if rank == 0:
-                np.savez_compressed(bcm_file,
-                                   field=global_bcm_map, box_size=CONFIG['box_size'],
-                                   grid_resolution=grid_res, snapshot=snapNum,
-                                   bcm_model=bcm_name, log_mass_min=log_mass_min,
-                                   log_mass_max=log_mass_max if log_mass_max else 'None')
-                print(f"    Saved: {bcm_file} ({time.time() - t_bcm_start:.1f}s)")
+                print(f"\n  Processing BCM: {bcm_name}")
+                t_bcm_start = time.time()
             
-            # Free memory and force garbage collection between BCM models
-            del bcm_model, local_bcm_map
-            if global_bcm_map is not None:
-                del global_bcm_map
-            gc.collect()
-            comm.Barrier()  # Ensure all ranks sync before next model
+            try:
+                # Setup BCM model on all ranks
+                bcm_model = setup_bcm_model(bcm_name)
                 
-        except Exception as e:
-            if rank == 0:
-                print(f"    ERROR in {bcm_name}: {e}")
-                import traceback
-                traceback.print_exc()
-                # Save DMO map as fallback
-                np.savez_compressed(bcm_file,
-                                   field=global_dmo_map, box_size=CONFIG['box_size'],
-                                   grid_resolution=grid_res, snapshot=snapNum,
-                                   bcm_model=bcm_name, error=str(e))
-            gc.collect()  # Clean up even on error
+                # Each rank creates a snapshot with its LOCAL particles
+                if len(dmo_coords) > 0:
+                    # Wrap coordinates to [0, box_size) to avoid KDTree periodic boundary errors
+                    box = CONFIG['box_size']
+                    wrapped_coords = dmo_coords % box
+                    
+                    Snap = bfg.ParticleSnapshot(
+                        x=wrapped_coords[:, 0].astype(np.float64),
+                        y=wrapped_coords[:, 1].astype(np.float64),
+                        z=wrapped_coords[:, 2].astype(np.float64),
+                        L=box,
+                        redshift=0,
+                        cosmo=cdict,
+                        M=dmo_masses[0] if len(dmo_masses) > 0 else dmo_mass * CONFIG['mass_unit']
+                    )
+                    
+                    # Use ALL halos (BaryonForge handles periodic boundaries)
+                    HCat = bfg.HaloNDCatalog(
+                        x=halo_positions[:, 0],
+                        y=halo_positions[:, 1],
+                        z=halo_positions[:, 2],
+                        M=halo_masses,
+                        redshift=0,
+                        cosmo=cdict
+                    )
+                    
+                    # Create runner and process
+                    # epsilon_max=5 ensures we capture the full BCM effect out to ~5 R_200
+                    # (Schneider models have extended profiles)
+                    Runner = bfg.Runners.BaryonifySnapshot(
+                        HCat, Snap, epsilon_max=5.0, model=bcm_model,
+                        KDTree_kwargs={'leafsize': 1000, 'balanced_tree': False},
+                        verbose=(rank == 0)
+                    )
+                    
+                    Baryonified = Runner.process()
+                    
+                    bcm_coords_local = np.array([
+                        Baryonified['x'][:],
+                        Baryonified['y'][:],
+                        Baryonified['z'][:]
+                    ]).T.astype(np.float32)
+                    
+                    # Project local BCM particles to 2D
+                    local_bcm_map = project_to_2d_fast(bcm_coords_local, dmo_masses,
+                                                       CONFIG['box_size'], grid_res)
+                    
+                    # Free BCM-specific memory immediately
+                    del bcm_coords_local, Baryonified, Runner, Snap, HCat, wrapped_coords
+                else:
+                    local_bcm_map = np.zeros((grid_res, grid_res), dtype=np.float32)
+                
+                # Reduce all local maps to rank 0
+                if rank == 0:
+                    global_bcm_map = np.zeros((grid_res, grid_res), dtype=np.float32)
+                else:
+                    global_bcm_map = None
+                
+                comm.Reduce(local_bcm_map, global_bcm_map, op=MPI.SUM, root=0)
+                
+                if rank == 0:
+                    np.savez_compressed(bcm_file,
+                                       field=global_bcm_map, box_size=CONFIG['box_size'],
+                                       grid_resolution=grid_res, snapshot=snapNum,
+                                       bcm_model=bcm_name, log_mass_min=log_mass_min,
+                                       log_mass_max=log_mass_max if log_mass_max else 'None')
+                    print(f"    Saved: {bcm_file} ({time.time() - t_bcm_start:.1f}s)")
+                
+                # Free memory and force garbage collection between BCM models
+                del bcm_model, local_bcm_map
+                if global_bcm_map is not None:
+                    del global_bcm_map
+                gc.collect()
+                comm.Barrier()  # Ensure all ranks sync before next model
+                    
+            except Exception as e:
+                if rank == 0:
+                    print(f"    ERROR in {bcm_name}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    # Save DMO map as fallback
+                    np.savez_compressed(bcm_file,
+                                       field=global_dmo_map, box_size=CONFIG['box_size'],
+                                       grid_resolution=grid_res, snapshot=snapNum,
+                                       bcm_model=bcm_name, error=str(e))
+                gc.collect()  # Clean up even on error
     
     comm.Barrier()  # Ensure all ranks wait for BCM to finish
     
@@ -737,6 +745,14 @@ def main():
                         help='Skip generation if output files already exist')
     parser.add_argument('--only-bcm', action='store_true',
                         help='Only generate BCM maps (skip DMO, Hydro, Replace)')
+    parser.add_argument('--skip-bcm', action='store_true',
+                        help='Skip BCM generation (only DMO, Hydro, Replace)')
+    parser.add_argument('--skip-replace', action='store_true',
+                        help='Skip Replace generation')
+    parser.add_argument('--skip-dmo-hydro', action='store_true',
+                        help='Skip DMO and Hydro generation (use with --mass-min for Replace/BCM only)')
+    parser.add_argument('--output-suffix', type=str, default='',
+                        help='Suffix to add to output filenames (e.g., "_Mgt13.0")')
     parser.add_argument('--bcm-models', type=str, nargs='+', 
                         default=['Arico20', 'Schneider19', 'Schneider25'],
                         help='BCM models to run')
