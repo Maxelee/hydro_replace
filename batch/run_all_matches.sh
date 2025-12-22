@@ -7,7 +7,7 @@
 #SBATCH -o /mnt/home/mlee1/hydro_replace2/logs/matches_%A_%a.o
 #SBATCH -e /mnt/home/mlee1/hydro_replace2/logs/matches_%A_%a.e
 #SBATCH -t 06:00:00
-#SBATCH --array=0-7
+#SBATCH --array=0-1
 
 # ==============================================================================
 # Generate matches for remaining missing snapshots
@@ -15,7 +15,7 @@
 # ==============================================================================
 
 # Snapshots still missing (as of Dec 21, 2025)
-SNAPSHOTS=(52 56 63 67 71 80 85 90 96)
+SNAPSHOTS=(96)
 SNAP=${SNAPSHOTS[$SLURM_ARRAY_TASK_ID]}
 
 SIM_RES=${SIM_RES:-2500}

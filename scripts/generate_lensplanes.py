@@ -230,33 +230,114 @@ def get_projection_axes(proj_dir):
 
 
 # ============================================================================
+# Particle Cache Loading
+# ============================================================================
+
+def load_particle_cache(snapNum, mass_min, mass_max=None, sim_res=2500):
+    """
+    Load particle IDs from cache for halos within mass range.
+    
+    Returns
+    -------
+    cache_data : dict or None
+        Dictionary with keys:
+        - 'halo_indices': array of halo indices matching mass range
+        - 'dmo_particle_ids': list of arrays, one per halo
+        - 'hydro_particle_ids': list of arrays, one per halo
+        Returns None if cache file doesn't exist.
+    """
+    cache_file = f'/mnt/home/mlee1/ceph/hydro_replace_fields/L205n{sim_res}TNG/particle_cache/cache_snap{snapNum:03d}.h5'
+    
+    if not os.path.exists(cache_file):
+        return None
+    
+    try:
+        with h5py.File(cache_file, 'r') as f:
+            # Load matches to get halo masses and indices
+            matches_file = f'/mnt/home/mlee1/ceph/hydro_replace_fields/L205n{sim_res}TNG/matches/matches_snap{snapNum:03d}.npz'
+            if not os.path.exists(matches_file):
+                return None
+            
+            matches = np.load(matches_file)
+            all_masses = matches['dmo_masses'] * 1e10  # Convert 10^10 Msun/h -> Msun/h
+            log_masses = np.log10(all_masses)
+            
+            # Apply mass cut
+            if mass_max is not None:
+                mask = (log_masses >= mass_min) & (log_masses < mass_max)
+            else:
+                mask = log_masses >= mass_min
+            
+            halo_indices = np.where(mask)[0]
+            
+            if len(halo_indices) == 0:
+                return None
+            
+            # Load particle IDs for matching halos
+            dmo_ids = []
+            hydro_ids = []
+            
+            for idx in halo_indices:
+                # DMO particle IDs - stored as /dmo/halo_{idx}
+                dmo_key = f'dmo/halo_{idx}'
+                if dmo_key in f:
+                    dmo_ids.append(f[dmo_key][:])
+                else:
+                    dmo_ids.append(np.array([], dtype=np.int64))
+                
+                # Hydro particle IDs - stored as /hydro/halo_{idx}
+                hydro_key = f'hydro/halo_{idx}'
+                if hydro_key in f:
+                    hydro_ids.append(f[hydro_key][:])
+                else:
+                    hydro_ids.append(np.array([], dtype=np.int64))
+            
+            return {
+                'halo_indices': halo_indices,
+                'dmo_particle_ids': dmo_ids,
+                'hydro_particle_ids': hydro_ids,
+            }
+    
+    except Exception as e:
+        if rank == 0:
+            print(f"  Warning: Failed to load particle cache: {e}")
+        return None
+
+
+# ============================================================================
 # Particle Loading
 # ============================================================================
 
 def load_dmo_particles(basePath, snapNum, my_files, dmo_mass, mass_unit):
     """Load DMO particle coordinates and masses."""
     coords_list = []
+    ids_list = []
     
     for filepath in my_files:
         with h5py.File(filepath, 'r') as f:
             if 'PartType1' not in f:
                 continue
             coords = f['PartType1']['Coordinates'][:].astype(np.float32) / 1e3
+            ids = f['PartType1']['ParticleIDs'][:]
             coords_list.append(coords)
+            ids_list.append(ids)
     
     if len(coords_list) == 0:
         coords = np.zeros((0, 3), dtype=np.float32)
+        ids = np.zeros(0, dtype=np.int64)
     else:
         coords = np.concatenate(coords_list)
+        ids = np.concatenate(ids_list)
     
     masses = np.ones(len(coords), dtype=np.float32) * dmo_mass * mass_unit
-    return coords, masses
+    return coords, masses, ids
 
 
 def load_hydro_particles(basePath, snapNum, my_files, hydro_dm_mass, mass_unit):
     """Load hydro particle coordinates and masses (gas + DM + stars)."""
     coords_list = []
     masses_list = []
+    ids_list = []
     
     for filepath in my_files:
         with h5py.File(filepath, 'r') as f:
@@ -264,6 +345,7 @@ def load_hydro_particles(basePath, snapNum, my_files, hydro_dm_mass, mass_unit):
             if 'PartType0' in f:
                 coords_list.append(f['PartType0']['Coordinates'][:].astype(np.float32) / 1e3)
                 masses_list.append(f['PartType0']['Masses'][:].astype(np.float32) * mass_unit)
+                ids_list.append(f['PartType0']['ParticleIDs'][:])
             
             # DM
             if 'PartType1' in f:
@@ -271,16 +353,18 @@ def load_hydro_particles(basePath, snapNum, my_files, hydro_dm_mass, mass_unit):
                 m = np.ones(len(c), dtype=np.float32) * hydro_dm_mass * mass_unit
                 coords_list.append(c)
                 masses_list.append(m)
+                ids_list.append(f['PartType1']['ParticleIDs'][:])
             
             # Stars
             if 'PartType4' in f:
                 coords_list.append(f['PartType4']['Coordinates'][:].astype(np.float32) / 1e3)
                 masses_list.append(f['PartType4']['Masses'][:].astype(np.float32) * mass_unit)
+                ids_list.append(f['PartType4']['ParticleIDs'][:])
     
     if len(coords_list) == 0:
-        return np.zeros((0, 3), dtype=np.float32), np.zeros(0, dtype=np.float32)
+        return np.zeros((0, 3), dtype=np.float32), np.zeros(0, dtype=np.float32), np.zeros(0, dtype=np.int64)
     
-    return np.concatenate(coords_list), np.concatenate(masses_list)
+    return np.concatenate(coords_list), np.concatenate(masses_list), np.concatenate(ids_list)
 
 
 # ============================================================================
@@ -483,49 +567,89 @@ def setup_bcm_model(model_name):
     return Displacement
 
 
-def apply_bcm_displacement(coords, masses, halo_positions, halo_radii, halo_masses,
-                            displacement_model, scale_factor, box_size):
+def apply_bcm_displacement(coords, masses, pids,
+                            halo_positions, halo_radii, halo_masses,
+                            displacement_model, scale_factor, box_size,
+                            particle_cache=None, id_to_idx=None):
     """
     Apply BCM displacement to particles around halos.
     
     Only displaces particles within radius_multiplier × R_200 of halo centers.
+    If particle_cache and ID mapping are provided, uses pre-computed particle IDs.
+    Otherwise falls back to KD-tree queries.
     """
     if len(coords) == 0 or len(halo_positions) == 0:
         return coords.copy()
     
     coords_out = coords.copy()
-    tree = cKDTree(coords)
     radius_mult = CONFIG['radius_multiplier']
     
-    for i, (pos, r200, M200) in enumerate(zip(halo_positions, halo_radii, halo_masses)):
-        # Find particles within radius_mult × R_200
-        r_max = radius_mult * r200
-        idx = tree.query_ball_point(pos, r_max)
+    # Use particle cache if available
+    if particle_cache is not None and id_to_idx is not None:
+        for i, (pos, r200, M200, pid_list) in enumerate(zip(
+            halo_positions, halo_radii, halo_masses, particle_cache['dmo_particle_ids']
+        )):
+            if len(pid_list) == 0:
+                continue
+            
+            # Map particle IDs to local indices
+            local_indices = np.array([id_to_idx[pid] for pid in pid_list if pid in id_to_idx])
+            if len(local_indices) == 0:
+                continue
+            
+            # Compute radial distance from halo center
+            dx = coords[local_indices] - pos
+            # Periodic boundary
+            dx = dx - np.round(dx / box_size) * box_size
+            r = np.linalg.norm(dx, axis=1)
+            
+            # Get displacement (in Mpc/h) for each particle
+            r_safe = np.maximum(r, 1e-6)  # Avoid r=0
+            dr = displacement_model.displacement(r_safe, M200, a=scale_factor)
+            
+            # Handle NaN displacements (can happen at very small radii)
+            nan_mask = np.isnan(dr)
+            if nan_mask.any():\n                dr[nan_mask] = 0.0
+            
+            # Apply radial displacement
+            unit_vec = dx / r_safe[:, np.newaxis]
+            coords_out[local_indices] += dr[:, np.newaxis] * unit_vec
+            
+            # Apply periodic boundary
+            coords_out[local_indices] = coords_out[local_indices] % box_size
+    else:
+        # Fall back to KD-tree method (original implementation)
+        tree = cKDTree(coords)
         
-        if len(idx) == 0:
-            continue
-        
-        # Compute radial distance from halo center
-        dx = coords[idx] - pos
-        # Periodic boundary
-        dx = dx - np.round(dx / box_size) * box_size
-        r = np.linalg.norm(dx, axis=1)
-        
-        # Get displacement (in Mpc/h) for each particle
-        r_safe = np.maximum(r, 1e-6)  # Avoid r=0
-        dr = displacement_model.displacement(r_safe, M200, a=scale_factor)
-        
-        # Handle NaN displacements (can happen at very small radii)
-        nan_mask = np.isnan(dr)
-        if nan_mask.any():
-            dr[nan_mask] = 0.0
-        
-        # Apply radial displacement
-        unit_vec = dx / r_safe[:, np.newaxis]
-        coords_out[idx] += dr[:, np.newaxis] * unit_vec
-        
-        # Apply periodic boundary
-        coords_out[idx] = coords_out[idx] % box_size
+        for i, (pos, r200, M200) in enumerate(zip(halo_positions, halo_radii, halo_masses)):
+            # Find particles within radius_mult × R_200
+            r_max = radius_mult * r200
+            idx = tree.query_ball_point(pos, r_max)
+            
+            if len(idx) == 0:
+                continue
+            
+            # Compute radial distance from halo center
+            dx = coords[idx] - pos
+            # Periodic boundary
+            dx = dx - np.round(dx / box_size) * box_size
+            r = np.linalg.norm(dx, axis=1)
+            
+            # Get displacement (in Mpc/h) for each particle
+            r_safe = np.maximum(r, 1e-6)  # Avoid r=0
+            dr = displacement_model.displacement(r_safe, M200, a=scale_factor)
+            
+            # Handle NaN displacements (can happen at very small radii)
+            nan_mask = np.isnan(dr)
+            if nan_mask.any():
+                dr[nan_mask] = 0.0
+            
+            # Apply radial displacement
+            unit_vec = dx / r_safe[:, np.newaxis]
+            coords_out[idx] += dr[:, np.newaxis] * unit_vec
+            
+            # Apply periodic boundary
+            coords_out[idx] = coords_out[idx] % box_size
     
     return coords_out
 
@@ -589,20 +713,21 @@ def process_snapshot_multi_seed(args, snap_idx, snap_info, seeds, bcm_models=Non
     my_hydro_files = [f for i, f in enumerate(hydro_files) if i % size == rank]
     
     # Load DMO particles (original coordinates - will transform per seed)
-    dmo_coords_orig, dmo_masses = load_dmo_particles(
+    dmo_coords_orig, dmo_masses, dmo_ids = load_dmo_particles(
         dmo_basePath, snapNum, my_dmo_files,
         sim_config['dmo_mass'], CONFIG['mass_unit']
     )
     
     # Load Hydro particles (only if needed)
     if args.model in ['hydro', 'replace', 'all']:
-        hydro_coords_orig, hydro_masses = load_hydro_particles(
+        hydro_coords_orig, hydro_masses, hydro_ids = load_hydro_particles(
             hydro_basePath, snapNum, my_hydro_files,
             sim_config['hydro_dm_mass'], CONFIG['mass_unit']
         )
     else:
         hydro_coords_orig = np.zeros((0, 3), dtype=np.float32)
         hydro_masses = np.zeros(0, dtype=np.float32)
+        hydro_ids = np.zeros(0, dtype=np.int64)
     
     if rank == 0:
         t_load = time.time() - t_start
@@ -610,12 +735,33 @@ def process_snapshot_multi_seed(args, snap_idx, snap_info, seeds, bcm_models=Non
         print(f"  Data loading time: {t_load:.1f}s")
     
     # ========================================================================
+    # Load particle cache (if available) - DONE ONCE
+    # ========================================================================
+    particle_cache = None
+    if args.model in ['replace', 'bcm', 'all'] or (bcm_models is not None):
+        if rank == 0:
+            print("\n[2/4] Checking for particle cache...")
+        
+        # Try to load particle cache on rank 0
+        if rank == 0:
+            particle_cache = load_particle_cache(
+                snapNum, args.mass_min, getattr(args, 'mass_max', None), args.sim_res
+            )
+            if particle_cache is not None:
+                print(f"  ✓ Loaded particle cache: {len(particle_cache['halo_indices'])} halos")
+            else:
+                print(f"  ✗ Particle cache not found, will use KD-tree queries")
+        
+        # Broadcast cache availability to all ranks (just a flag for now)
+        cache_available = comm.bcast(particle_cache is not None, root=0)
+    
+    # ========================================================================
     # Load halo catalog (for replace and BCM) - ALSO DONE ONCE
     # ========================================================================
     halo_info = None
     if args.model in ['replace', 'bcm', 'all'] or (bcm_models is not None):
         if rank == 0:
-            print("\n[2/4] Loading halo catalog...")
+            print("\n[3/4] Loading halo catalog...")
         
         halo_dmo = groupcat.loadHalos(
             dmo_basePath, snapNum,
@@ -647,10 +793,30 @@ def process_snapshot_multi_seed(args, snap_idx, snap_info, seeds, bcm_models=Non
             print(f"  Halos above log10(M) >= {mass_min}: {len(halo_indices)}")
     
     # ========================================================================
+    # Build particle ID to index mappings (if using cache)
+    # ========================================================================
+    dmo_id_to_idx = None
+    hydro_id_to_idx = None
+    
+    if particle_cache is not None:
+        if rank == 0:
+            print("\n  Building particle ID -> index mappings...")
+            t_map = time.time()
+        
+        # Build mapping from particle ID to local index
+        # This is fast: O(N) with dict
+        dmo_id_to_idx = {pid: idx for idx, pid in enumerate(dmo_ids)}
+        if len(hydro_ids) > 0:
+            hydro_id_to_idx = {pid: idx for idx, pid in enumerate(hydro_ids)}
+        
+        if rank == 0:
+            print(f"  Mapping built in {time.time()-t_map:.1f}s")
+    
+    # ========================================================================
     # Loop over seeds - Apply transformations and generate lens planes
     # ========================================================================
     if rank == 0:
-        print(f"\n[3/4] Generating lens planes for {len(seeds)} seeds...")
+        print(f"\n[4/4] Generating lens planes for {len(seeds)} seeds...")
     
     # Compute mean surface density for normalization (constant across seeds)
     slice_thickness = box_size / pps
@@ -737,8 +903,10 @@ def process_snapshot_multi_seed(args, snap_idx, snap_info, seeds, bcm_models=Non
                 elif model_name == 'replace':
                     # Replace: DMO outside halos + Hydro inside halos
                     coords, masses = build_replace_field(
-                        dmo_coords, dmo_masses, hydro_coords, hydro_masses,
-                        halo_positions, halo_radii, box_size
+                        dmo_coords, dmo_masses, dmo_ids,
+                        hydro_coords, hydro_masses, hydro_ids,
+                        halo_positions, halo_radii, box_size,
+                        particle_cache, dmo_id_to_idx, hydro_id_to_idx
                     )
                 elif model_name.startswith('bcm_'):
                     bcm_key = model_name.replace('bcm_', '').title()
@@ -754,8 +922,10 @@ def process_snapshot_multi_seed(args, snap_idx, snap_info, seeds, bcm_models=Non
                         continue
                     
                     coords = apply_bcm_displacement(
-                        dmo_coords, dmo_masses, halo_positions, halo_radii, halo_masses,
-                        disp_model, scale_factor, box_size
+                        dmo_coords, dmo_masses, dmo_ids,
+                        halo_positions, halo_radii, halo_masses,
+                        disp_model, scale_factor, box_size,
+                        particle_cache, dmo_id_to_idx
                     )
                     masses = dmo_masses
                 else:
@@ -819,33 +989,59 @@ def process_snapshot(args, snap_idx, snap_info, random_state, bcm_models=None):
     process_snapshot_multi_seed(args, snap_idx, snap_info, [args.seed], bcm_models)
 
 
-def build_replace_field(dmo_coords, dmo_masses, hydro_coords, hydro_masses,
-                        halo_positions, halo_radii, box_size):
+def build_replace_field(dmo_coords, dmo_masses, dmo_ids,
+                        hydro_coords, hydro_masses, hydro_ids,
+                        halo_positions, halo_radii, box_size,
+                        particle_cache=None, dmo_id_to_idx=None, hydro_id_to_idx=None):
     """
     Build replace field: DMO outside halos + Hydro inside halos.
+    
+    If particle_cache and ID mappings are provided, uses pre-computed particle IDs.
+    Otherwise falls back to KD-tree queries.
     """
     if len(halo_positions) == 0:
         return dmo_coords, dmo_masses
     
     radius_mult = CONFIG['radius_multiplier']
     
-    # Build KD-trees
-    dmo_tree = cKDTree(dmo_coords) if len(dmo_coords) > 0 else None
-    hydro_tree = cKDTree(hydro_coords) if len(hydro_coords) > 0 else None
-    
-    # DMO: keep everything EXCEPT within halo regions
-    dmo_keep_mask = np.ones(len(dmo_coords), dtype=bool)
-    if dmo_tree is not None:
-        for pos, r200 in zip(halo_positions, halo_radii):
-            idx = dmo_tree.query_ball_point(pos, radius_mult * r200)
-            dmo_keep_mask[idx] = False
-    
-    # Hydro: keep ONLY within halo regions
-    hydro_keep_mask = np.zeros(len(hydro_coords), dtype=bool)
-    if hydro_tree is not None:
-        for pos, r200 in zip(halo_positions, halo_radii):
-            idx = hydro_tree.query_ball_point(pos, radius_mult * r200)
-            hydro_keep_mask[idx] = True
+    # Use particle cache if available
+    if particle_cache is not None and dmo_id_to_idx is not None and hydro_id_to_idx is not None:
+        # DMO: keep everything EXCEPT particles in cache
+        dmo_keep_mask = np.ones(len(dmo_coords), dtype=bool)
+        for dmo_pid_list in particle_cache['dmo_particle_ids']:
+            if len(dmo_pid_list) > 0:
+                # Map particle IDs to local indices
+                local_indices = [dmo_id_to_idx[pid] for pid in dmo_pid_list if pid in dmo_id_to_idx]
+                if len(local_indices) > 0:
+                    dmo_keep_mask[local_indices] = False
+        
+        # Hydro: keep ONLY particles in cache
+        hydro_keep_mask = np.zeros(len(hydro_coords), dtype=bool)
+        if hydro_id_to_idx is not None:
+            for hydro_pid_list in particle_cache['hydro_particle_ids']:
+                if len(hydro_pid_list) > 0:
+                    # Map particle IDs to local indices
+                    local_indices = [hydro_id_to_idx[pid] for pid in hydro_pid_list if pid in hydro_id_to_idx]
+                    if len(local_indices) > 0:
+                        hydro_keep_mask[local_indices] = True
+    else:
+        # Fall back to KD-tree method (original implementation)
+        dmo_tree = cKDTree(dmo_coords) if len(dmo_coords) > 0 else None
+        hydro_tree = cKDTree(hydro_coords) if len(hydro_coords) > 0 else None
+        
+        # DMO: keep everything EXCEPT within halo regions
+        dmo_keep_mask = np.ones(len(dmo_coords), dtype=bool)
+        if dmo_tree is not None:
+            for pos, r200 in zip(halo_positions, halo_radii):
+                idx = dmo_tree.query_ball_point(pos, radius_mult * r200)
+                dmo_keep_mask[idx] = False
+        
+        # Hydro: keep ONLY within halo regions
+        hydro_keep_mask = np.zeros(len(hydro_coords), dtype=bool)
+        if hydro_tree is not None:
+            for pos, r200 in zip(halo_positions, halo_radii):
+                idx = hydro_tree.query_ball_point(pos, radius_mult * r200)
+                hydro_keep_mask[idx] = True
     
     # Combine
     coords = np.concatenate([
@@ -862,7 +1058,7 @@ def build_replace_field(dmo_coords, dmo_masses, hydro_coords, hydro_masses,
 
 def main():
     parser = argparse.ArgumentParser(description='Generate lens planes for ray-tracing')
-    parser.add_argument('--sim-res', type=int, default=625, choices=[625, 1250, 2500],
+    parser.add_argument('--sim-res', type=int, default=2500, choices=[625, 1250, 2500],
                        help='Simulation resolution (625, 1250, 2500)')
     parser.add_argument('--model', type=str, default='all',
                        choices=['dmo', 'hydro', 'replace', 'bcm', 'all'],

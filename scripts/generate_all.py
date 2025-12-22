@@ -440,18 +440,24 @@ def process_snapshot(args):
     my_dmo_files = [f for i, f in enumerate(dmo_files) if i % size == rank]
     my_hydro_files = [f for i, f in enumerate(hydro_files) if i % size == rank]
     
-    # Load DMO particles
+    # Load DMO particles (always needed)
     dmo_coords, dmo_masses = load_dmo_particles(
         dmo_basePath, snapNum, my_dmo_files, dmo_mass, CONFIG['mass_unit']
     )
     
-    # Load Hydro particles
-    hydro_coords, hydro_masses = load_hydro_particles(
-        hydro_basePath, snapNum, my_hydro_files, hydro_dm_mass, CONFIG['mass_unit']
-    )
-    
-    if rank == 0:
-        print(f"  Rank 0: {len(dmo_coords):,} DMO, {len(hydro_coords):,} hydro particles")
+    # Load Hydro particles only if needed (not for BCM-only runs)
+    need_hydro = not only_bcm and not skip_dmo_hydro
+    if need_hydro:
+        hydro_coords, hydro_masses = load_hydro_particles(
+            hydro_basePath, snapNum, my_hydro_files, hydro_dm_mass, CONFIG['mass_unit']
+        )
+        if rank == 0:
+            print(f"  Rank 0: {len(dmo_coords):,} DMO, {len(hydro_coords):,} hydro particles")
+    else:
+        hydro_coords = np.empty((0, 3), dtype=np.float32)
+        hydro_masses = np.empty(0, dtype=np.float32)
+        if rank == 0:
+            print(f"  Rank 0: {len(dmo_coords):,} DMO particles (skipping hydro for BCM-only)")
     
     # Build KD-trees
     dmo_tree = cKDTree(dmo_coords) if len(dmo_coords) > 0 else None
