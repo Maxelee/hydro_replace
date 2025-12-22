@@ -2,10 +2,11 @@
 #SBATCH --job-name=test_625_full
 #SBATCH --output=logs/test_625_full_%j.o
 #SBATCH --error=logs/test_625_full_%j.e
-#SBATCH --nodes=1
+#SBATCH --nodes=4
 #SBATCH --ntasks=4
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=64G
+#SBATCH --mem=0
+#SBATCH --exclusive
 #SBATCH --time=2:00:00
 #SBATCH --partition=cca
 
@@ -16,9 +17,8 @@
 #   1. Particle cache generation (new format with hydro_at_dmo, hydro_at_hydro)
 #   2. Halo statistics computation (baryon fractions, mass conservation)
 #
-# MEMORY NOTE: Statistics computation loads full snapshots into each rank's
-# memory. 625 resolution needs ~2-3GB per rank, so we use fewer ranks with
-# total 64GB memory (4 tasks sharing it).
+# MEMORY NOTE: 625 has only 4 snapshot files. We use 4 ranks (one per file)
+# with exclusive access to 4 nodes for maximum memory per rank (~128GB each).
 # =============================================================================
 
 set -e
@@ -95,17 +95,19 @@ echo "Cache structure:"
 h5ls -r "$CACHE_FILE" | head -40
 
 # =============================================================================
-# Step 2: Compute Halo Statistics
+# Step 2: Compute Halo Statistics (DISTRIBUTED)
 # =============================================================================
 echo ""
 echo "=============================================================="
-echo "STEP 2: Halo Statistics Computation"
+echo "STEP 2: Halo Statistics Computation (Distributed)"
 echo "=============================================================="
 
-echo "Starting halo statistics..."
+echo "Starting distributed halo statistics..."
+echo "Each rank loads a subset of snapshot files - no single node needs full simulation"
 T_START=$(date +%s)
 
-srun python scripts/compute_halo_statistics.py \
+# Run with MPI - distributed version splits data across ranks
+srun python scripts/compute_halo_statistics_distributed.py \
     --snap ${SNAPSHOT} \
     --sim-res ${SIM_RES} \
     --mass-min 11.5
