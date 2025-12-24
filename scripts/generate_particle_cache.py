@@ -52,7 +52,7 @@ CONFIG = {
     'box_size': 205.0,  # Mpc/h
     'radius_multiplier': 5.0,  # Cache particles within 5×R200
     'output_base': '/mnt/home/mlee1/ceph/hydro_replace_fields',
-    'min_mass': 12.0,  # log10(Msun/h) - cache halos above this mass
+    'min_mass': 12.5,  # log10(Msun/h) - cache halos above this mass
 }
 
 

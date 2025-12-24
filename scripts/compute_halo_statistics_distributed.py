@@ -400,8 +400,10 @@ def main():
             # Load halo info from halo_info group
             halo_info = f['halo_info']
             dmo_indices = halo_info['halo_indices'][:]
-            positions = halo_info['positions_dmo'][:]  # Use DMO positions for matching
-            radii = halo_info['radii_dmo'][:]  # Use DMO R200
+            positions_dmo = halo_info['positions_dmo'][:]  # DMO positions for DMO particles
+            radii_dmo = halo_info['radii_dmo'][:]  # DMO R200
+            positions_hydro = halo_info['positions_hydro'][:]  # Hydro positions for Hydro particles
+            radii_hydro = halo_info['radii_hydro'][:]  # Hydro R200
             masses = halo_info['masses'][:]
             
             # Filter by mass
@@ -410,8 +412,10 @@ def main():
             
             halo_cache_indices = np.where(mass_mask)[0]
             halo_dmo_indices = dmo_indices[mass_mask]
-            halo_positions = positions[mass_mask]
-            halo_radii = radii[mass_mask]
+            halo_positions_dmo = positions_dmo[mass_mask]
+            halo_radii_dmo = radii_dmo[mass_mask]
+            halo_positions_hydro = positions_hydro[mass_mask]
+            halo_radii_hydro = radii_hydro[mass_mask]
             halo_log_masses = log_masses[mass_mask]
             
             n_halos = len(halo_cache_indices)
@@ -428,7 +432,11 @@ def main():
                 dmo_ids = f[f'dmo/halo_{cache_idx}'][:]
                 dmo_particle_ids.append(dmo_ids)
                 
-                if has_new_format:
+                # For statistics, use hydro_at_hydro (particles centered on hydro halo)
+                if 'hydro_at_hydro' in f:
+                    hydro_ids = f[f'hydro_at_hydro/halo_{cache_idx}'][:]
+                elif has_new_format:
+                    # Fall back to hydro_at_dmo if hydro_at_hydro not available
                     hydro_ids = f[f'hydro_at_dmo/halo_{cache_idx}'][:]
                 else:
                     hydro_ids = f[f'hydro/halo_{cache_idx}'][:]
@@ -440,16 +448,20 @@ def main():
         n_halos = None
         halo_cache_indices = None
         halo_dmo_indices = None
-        halo_positions = None
-        halo_radii = None
+        halo_positions_dmo = None
+        halo_radii_dmo = None
+        halo_positions_hydro = None
+        halo_radii_hydro = None
         halo_log_masses = None
         dmo_particle_ids = None
         hydro_particle_ids = None
     
     # Broadcast halo info
     n_halos = comm.bcast(n_halos, root=0)
-    halo_positions = comm.bcast(halo_positions, root=0)
-    halo_radii = comm.bcast(halo_radii, root=0)
+    halo_positions_dmo = comm.bcast(halo_positions_dmo, root=0)
+    halo_radii_dmo = comm.bcast(halo_radii_dmo, root=0)
+    halo_positions_hydro = comm.bcast(halo_positions_hydro, root=0)
+    halo_radii_hydro = comm.bcast(halo_radii_hydro, root=0)
     halo_log_masses = comm.bcast(halo_log_masses, root=0)
     halo_dmo_indices = comm.bcast(halo_dmo_indices, root=0)
     dmo_particle_ids = comm.bcast(dmo_particle_ids, root=0)
@@ -483,8 +495,10 @@ def main():
         results = {
             'dmo_indices': halo_dmo_indices.astype(np.int32),
             'log_masses': halo_log_masses.astype(np.float32),
-            'positions': halo_positions.astype(np.float32),
-            'radii': halo_radii.astype(np.float32),
+            'positions_dmo': halo_positions_dmo.astype(np.float32),
+            'radii_dmo': halo_radii_dmo.astype(np.float32),
+            'positions_hydro': halo_positions_hydro.astype(np.float32),
+            'radii_hydro': halo_radii_hydro.astype(np.float32),
             
             # Baryon fractions
             'f_baryon': np.zeros((n_halos, n_radii), dtype=np.float32),
@@ -511,28 +525,34 @@ def main():
             
             dmo_ids = dmo_particle_ids[i]
             hydro_ids = hydro_particle_ids[i]
-            pos = halo_positions[i]
-            r200 = halo_radii[i]
+            pos_dmo = halo_positions_dmo[i]
+            r200_dmo = halo_radii_dmo[i]
+            pos_hydro = halo_positions_hydro[i]
+            r200_hydro = halo_radii_hydro[i]
         else:
             dmo_ids = None
             hydro_ids = None
-            pos = None
-            r200 = None
+            pos_dmo = None
+            r200_dmo = None
+            pos_hydro = None
+            r200_hydro = None
         
-        # Query DMO particles (collective operation)
+        # Query DMO particles (collective operation) - centered on DMO halo
         dmo_ids = comm.bcast(dmo_ids, root=0)
-        pos = comm.bcast(pos, root=0)
-        r200 = comm.bcast(r200, root=0)
+        pos_dmo = comm.bcast(pos_dmo, root=0)
+        r200_dmo = comm.bcast(r200_dmo, root=0)
         
         dmo_coords, dmo_masses, dmo_radii_r200, dmo_types = dmo_data.query_particles(
-            dmo_ids, pos, r200
+            dmo_ids, pos_dmo, r200_dmo
         )
         
-        # Query Hydro particles (collective operation)
+        # Query Hydro particles (collective operation) - centered on HYDRO halo
         hydro_ids = comm.bcast(hydro_ids, root=0)
+        pos_hydro = comm.bcast(pos_hydro, root=0)
+        r200_hydro = comm.bcast(r200_hydro, root=0)
         
         hydro_coords, hydro_masses, hydro_radii_r200, hydro_types = hydro_data.query_particles(
-            hydro_ids, pos, r200
+            hydro_ids, pos_hydro, r200_hydro
         )
         
         # Compute statistics (rank 0 only)
