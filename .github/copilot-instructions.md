@@ -2,34 +2,66 @@
 
 ## Project Overview
 
-This project generates 2D projected density maps and ray-tracing outputs comparing different cosmological simulation methods:
-- **DMO**: Dark Matter Only simulations
-- **Hydro**: Full hydrodynamic simulations (IllustrisTNG)
-- **Replace**: Hybrid method replacing DMO halos with matched Hydro counterparts
-- **BCM**: Baryonic Correction Models (Arico+20, Schneider+19, Schneider+25)
+This project implements a **Mass-Radius-Redshift Response Formalism** for quantifying how baryonic feedback modifies cosmological weak lensing observables. The core idea is to construct "Replace" density fields that interpolate between DMO and Hydro simulations by selectively replacing halos based on mass and radius criteria.
 
-The pipeline supports weak lensing analysis via integration with the `lux` ray-tracing code.
+### Scientific Goal
+Measure the **response kernel** $K_S(M_a, M_b; \alpha_i; z_k)$ which quantifies what fraction of the baryonic effect on observable $S$ comes from halos in mass bin $[M_a, M_b)$ at radius factor $\alpha$ and redshift $z$.
+
+### Simulation Types
+- **DMO**: Dark Matter Only simulations (baseline)
+- **Hydro**: Full hydrodynamic simulations (IllustrisTNG) with baryonic physics
+- **Replace**: Hybrid fields where DMO halos are replaced with matched Hydro counterparts within $\alpha \times R_{200}$
+- **BCM**: Baryonic Correction Models (Arico+20, Schneider+19, Schneider+25) applied to DMO particles
+
+### Key Equations
+The Replace field is defined as:
+$$\rho_{\rm R}(\mathbf{x}) = \rho_{\rm D}(\mathbf{x}) + \sum_{i \in \mathcal{H}(M_{\min})} \left[\rho_{\rm H,halo}^{(i)} - \rho_{\rm D,halo}^{(i)}\right]$$
+
+The response fraction measures how much of the Hydro-DMO difference is captured:
+$$F_S(M_{\min}, \alpha) = \frac{S_{\rm R} - S_{\rm D}}{S_{\rm H} - S_{\rm D}}$$
 
 ## Key Directories
 
-- `scripts/` - Main Python scripts (MPI-parallel)
-- `batch/` - SLURM job submission scripts
+- `scripts/` - Main Python scripts (MPI-parallel, only 3 active scripts)
+- `batch/` - SLURM job submission scripts (only 3 active scripts)
 - `config/` - YAML configuration files
-- `notebooks/` - Jupyter notebooks for analysis
+- `notebooks/` - Jupyter notebooks for analysis and visualization
 - `logs/` - SLURM output logs
 - `archive/` - Old/deprecated code for reference
 
-## Important Scripts
+## Active Scripts
 
-### Core Pipeline
-- `scripts/generate_all.py` - Main MPI pipeline for density maps
-- `scripts/generate_matches_fast.py` - Bijective halo matching (DMO ↔ Hydro)
-- `scripts/generate_profiles.py` - Radial density profiles around halos
-- `scripts/generate_lensplanes.py` - Generate lens planes for ray-tracing
+### Pipeline Scripts (scripts/)
+- `generate_all_unified.py` - Unified pipeline for DMO/Hydro/Replace maps and lensplanes
+- `generate_all_unified_bcm.py` - BCM pipeline (Schneider19, Schneider25, Arico20)
+- `convert_to_lensplanes.py` - Convert mass planes to lux lensing potential format
 
-### Ray-Tracing Integration
-- `scripts/generate_lux_configs.py` - Generate lux configuration files
-- `batch/run_raytracing_pipeline.sh` - Full ray-tracing orchestration
+### Batch Scripts (batch/)
+- `run_unified_2500_array.sh` - Array job for L205n2500TNG (20 snapshots)
+- `run_unified_bcm_array.sh` - Array job for BCM models
+- `run_lux_pipeline_array.sh` - Array job for lux ray-tracing (34 models × 10 realizations)
+
+## Replace Configurations
+
+The pipeline generates Replace fields for combinations of:
+
+### Mass Bins (M_lo to M_hi in M_sun/h)
+- `Ml_1.00e12_Mu_3.16e12` - 10^12.0 to 10^12.5
+- `Ml_1.00e12_Mu_inf` - 10^12.0+ (cumulative)
+- `Ml_3.16e12_Mu_1.00e13` - 10^12.5 to 10^13.0
+- `Ml_3.16e12_Mu_inf` - 10^12.5+ (cumulative)
+- `Ml_1.00e13_Mu_3.16e13` - 10^13.0 to 10^13.5
+- `Ml_1.00e13_Mu_inf` - 10^13.0+ (cumulative)
+- `Ml_3.16e13_Mu_1.00e15` - 10^13.5 to 10^15.0
+- `Ml_3.16e13_Mu_inf` - 10^13.5+ (cumulative)
+
+### Radius Factors (α × R_200)
+- `R_0.5` - Core region only
+- `R_1.0` - Within virial radius
+- `R_3.0` - Extended halo
+- `R_5.0` - Full splash-back region
+
+Total: 8 mass configs × 4 R factors = 32 Replace configurations + DMO + Hydro = 34 models
 
 ## External Dependencies
 
@@ -41,15 +73,14 @@ The pipeline supports weak lensing analysis via integration with the `lux` ray-t
 ### Lux Ray-Tracing Code
 - Location: `/mnt/home/mlee1/lux/`
 - Config format: Simple key-value pairs (NO section headers like `[path]`)
-- Valid parameters: `input_dir`, `LP_output_dir`, `RT_output_dir`, `simulation_format`, `LP_grid`, `RT_grid`, `planes_per_snapshot`, `projection_direction`, `translation_rotation`, `LP_random_seed`, `RT_random_seed`, `RT_randomization`, `angle`, `verbose`, `snapshot_list`, `snapshot_stack`
+- Valid parameters: `LP_output_dir`, `RT_output_dir`, `LP_grid`, `RT_grid`, `planes_per_snapshot`, `angle`, `RT_random_seed`, `RT_randomization`, `snapshot_list`, `snapshot_stack`, `verbose`
 - `snapshot_list`: comma-separated integers
 - `snapshot_stack`: comma-separated `true`/`false` (NOT 0/1)
-- Has two phases: lenspot (lens potential) and raytracing
 
 ### Output Locations
-- Density fields: `/mnt/home/mlee1/ceph/hydro_replace_fields/`
-- Lens planes: `/mnt/home/mlee1/ceph/hydro_replace_lensplanes/`
-- Lux output: `/mnt/home/mlee1/ceph/lux_out/`
+- Lens planes: `/mnt/home/mlee1/ceph/hydro_replace_LP/L205n2500TNG/`
+- Lux format: `/mnt/home/mlee1/ceph/hydro_replace_LP_lux/L205n2500TNG/`
+- Ray-tracing: `/mnt/home/mlee1/ceph/hydro_replace_RT/L205n2500TNG/`
 
 ## Coding Conventions
 
@@ -77,32 +108,18 @@ The pipeline supports weak lensing analysis via integration with the `lux` ray-t
 
 ### Environment Setup
 ```bash
-module load python openmpi hdf5 fftw gsl boost/mpi-1.84.0
+module purge
+module load python openmpi python-mpi hdf5
 source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
 ```
 
-### Typical Resources
-- 625 resolution: 4 nodes, 64 tasks, 4 hours
-- 1250 resolution: 8 nodes, 128 tasks, 8 hours
-- 2500 resolution: 16 nodes, 256 tasks, 12 hours
+### Typical Resources (L205n2500TNG)
+- Unified pipeline: 8 nodes, 16 tasks, 12 hours per snapshot
+- BCM pipeline: 8 nodes, 32 tasks, 12 hours per snapshot
+- Lux ray-tracing: 1 node, 40 tasks, 4 hours per model/realization
 
 ### Important: Never Run MPI Jobs on Login Nodes
 Always use `sbatch` for MPI jobs. Login nodes are shared resources.
-
-## Common Issues
-
-### Grid Size Configuration in Lux
-- `LP_grid` (lens potential): Should be 4096 for high-resolution lens planes
-- `RT_grid` (ray-tracing): Should be 1024 for ray-tracing output
-- Density files are written with grid size in header (int32)
-
-### Missing config.dat for Lux
-- Lux needs `config.dat` from lens plane generation
-- Copy from DMO directory if missing for other models
-
-### NaN Values in BCM
-- BCM can produce NaN at box corners (periodic boundary issues)
-- Replace with 0 before writing density files
 
 ## Ray-Tracing Snapshot List (20 snapshots)
 
@@ -136,9 +153,13 @@ snapshot_stack = false, false, false, false, false, false, false, false, false, 
 | 31 | 2.14 | true |
 | 29 | 2.32 | true |
 
-## Testing
+## Common Issues
 
-For quick tests, use L205n625TNG with:
-- `TEST=1` environment variable
-- Single snapshot (e.g., snap 96)
-- Default grid sizes: LP_GRID=4096, RT_GRID=1024
+### Grid Size Configuration
+- `LP_grid` (lens potential): 4096 for high-resolution lens planes
+- `RT_grid` (ray-tracing): 1024 for ray-tracing output
+- Map grid: 1024 for 2D density maps
+
+### NaN Values in BCM
+- BCM can produce NaN at box corners (periodic boundary issues)
+- Replace with 0 before writing density files

@@ -1,0 +1,505 @@
+%% Beginning of file 'sample701.tex'
+
+\documentclass[linenumbers,trackchanges]{aastex701}
+
+\newcommand{\vdag}{(v)^\dagger}
+\newcommand\aastex{AAS\TeX}
+\newcommand\latex{La\TeX}
+
+\begin{document}
+
+\title{The comeback series paper 2}
+
+\author[orcid=0000-0000-0000-0001,sname='North America']{Tundra North America}
+\altaffiliation{Kitt Peak National Observatory}
+\affiliation{University of Saskatchewan}
+\email[show]{fakeemail1@google.com}
+
+\begin{abstract}
+...
+\end{abstract}
+
+\keywords{\uat{Galaxies}{573}}
+
+\section{Introduction}
+\label{sec:intro}
+
+% ... your existing introduction text ...
+
+
+\section{A Mass--Radius--Redshift Response Formalism}
+\label{sec:formalism}
+
+In this section a response formalism is introduced that quantifies how baryonic feedback in haloes of different mass and radius modifies cosmological observables. The construction proceeds in three steps. First, a cumulative framework in terms of mass thresholds $M_{\min}$ and a fixed radial factor $\alpha$ is defined. Second, the limitations of this cumulative picture are addressed by moving to a discrete mass--bin and radius--bin description. Finally, the formalism is generalized to a vector of inputs, allowing simultaneous changes in multiple mass and radius ranges.
+
+\subsection{Reference fields and halo catalogues}
+
+We start from \emph{matched} gravity--only (DMO) and full hydrodynamical (Hydro) simulations sharing the same initial conditions.
+
+\paragraph{DMO field:}
+\begin{equation}
+\rho_{\rm D}(\mathbf{x},z)
+=
+\text{gravity--only dark matter density at position } \mathbf{x} \text{ and redshift } z.
+\end{equation}
+
+\paragraph{Hydro field:}
+\begin{equation}
+\rho_{\rm H}(\mathbf{x},z)
+=
+\text{total matter (DM + gas + stars) in the hydrodynamical run.}
+\end{equation}
+
+\paragraph{Baryonic difference:}
+\begin{equation}
+\Delta\rho_{\rm bar}(\mathbf{x},z)
+\equiv
+\rho_{\rm H}(\mathbf{x},z) - \rho_{\rm D}(\mathbf{x},z),
+\end{equation}
+which encodes depletion in halo cores, enhancement in outskirts and the intergalactic medium, and the net redistribution of mass.
+
+A bijective halo--matching procedure (e.g.\ based on particle ID overlap, or position and velocity) is used to construct a halo catalogue $\mathcal{H}(z)$ at each redshift, pairing each DMO halo $i$ with its Hydro counterpart. For each halo we record its mass $M_i$ (e.g.\ $M_{200}$), virial radius $R_{200}^{(i)}$, position $\mathbf{x}_i$, and member particles or cells in both runs.
+
+\subsection{Cumulative mass--threshold Replace operator (fixed radius)}
+\label{subsec:cumulative_mass}
+
+To build intuition, it is useful to begin with a \emph{cumulative} description in mass, at fixed replacement radius $\alpha R_{200}$.
+
+For a given mass threshold $M_{\min}$ and radius factor $\alpha$, we define a hybrid ``Replace'' density field
+\begin{equation}
+\rho_{\rm R}(\mathbf{x},z; M_{\min},\alpha)
+=
+\rho_{\rm D}(\mathbf{x},z)
++
+\sum_{i \in \mathcal{H}(M_{\min},z)}
+\Bigl[
+\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha)
+-
+\rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
+\Bigr],
+\label{eq:replace_cumulative}
+\end{equation}
+where $\mathcal{H}(M_{\min},z)$ denotes the set of haloes at redshift $z$ with $M_i \ge M_{\min}$, and
+\begin{equation}
+\rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
+=
+\begin{cases}
+\rho_{\rm D}(\mathbf{x}) & \text{if } |\mathbf{x}-\mathbf{x}_i| < \alpha R_{200}^{(i)},\\[3pt]
+0 & \text{otherwise},
+\end{cases}
+\qquad
+\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha)
+=
+\begin{cases}
+\rho_{\rm H}(\mathbf{x}) & \text{if } |\mathbf{x}-\mathbf{x}_i| < \alpha R_{200}^{(i)},\\[3pt]
+0 & \text{otherwise}.
+\end{cases}
+\end{equation}
+
+In words, for all haloes with $M_i \ge M_{\min}$ the DMO density is subtracted inside $\alpha R_{200}$ and replaced by the corresponding Hydro density; everything else remains DMO.
+
+In the limiting cases,
+\begin{align}
+M_{\min}\to\infty \ \text{or}\ \alpha\to 0
+&\ \Rightarrow\ \rho_{\rm R}\to \rho_{\rm D},\\
+M_{\min}\to M_{\rm min,box},\ \alpha\to\infty
+&\ \Rightarrow\ \rho_{\rm R}\to \rho_{\rm H},
+\end{align}
+so that $\rho_{\rm R}$ interpolates between the DMO and Hydro fields as $(M_{\min},\alpha)$ are varied.
+
+For any observable $S$ (e.g.\ $P(k)$ at fixed $k$, $C_\ell$ at fixed $\ell$, peak counts at fixed $\nu$), measured in the DMO, Hydro and Replace fields as $S_{\rm D}$, $S_{\rm H}$ and $S_{\rm R}(M_{\min},\alpha)$, we define a \emph{cumulative response fraction}
+\begin{equation}
+F_S(M_{\min},\alpha)
+\equiv
+\frac{S_{\rm R}(M_{\min},\alpha) - S_{\rm D}}{S_{\rm H} - S_{\rm D}}.
+\label{eq:cumulative_FS}
+\end{equation}
+For fixed $\alpha$ and $z$, consider the map
+\begin{equation}
+M_{\min} \mapsto F_S(M_{\min},\alpha;z).
+\end{equation}
+By construction, $F_S$ satisfies the following properties:
+
+\paragraph{Boundary conditions.}
+In the limits where no haloes or all haloes are replaced,
+\begin{align}
+\lim_{M_{\min}\to\infty} F_S(M_{\min},\alpha;z)
+&=
+\frac{S_{\rm D} - S_{\rm D}}{S_{\rm H} - S_{\rm D}}
+= 0,
+\\[3pt]
+\lim_{M_{\min}\to M_{\rm min,box}} F_S(M_{\min},\alpha\to\infty;z)
+&=
+\frac{S_{\rm H} - S_{\rm D}}{S_{\rm H} - S_{\rm D}}
+= 1,
+\end{align}
+provided that the Replace field in this limit reproduces $\rho_{\rm H}$ up to numerical accuracy.
+
+\paragraph{Monotonicity (ideal case).}
+In an idealized, linear response regime where the baryonic contribution of each halo to $\Delta S \equiv S_{\rm H}-S_{\rm D}$ is independent and non--negative, the cumulative response satisfies
+\begin{equation}
+\frac{\partial F_S(M_{\min},\alpha;z)}{\partial M_{\min}} \le 0.
+\end{equation}
+\emph{Proof sketch:} lowering $M_{\min}$ includes additional haloes in the sum in Eq.~\eqref{eq:replace_cumulative}. If each additional halo contributes a non--negative increment to $S_{\rm R}-S_{\rm D}$, then the numerator of Eq.~\eqref{eq:cumulative_FS} is non--decreasing as $M_{\min}$ decreases, implying that $F_S$ is non--increasing as a function of $M_{\min}$.
+
+In the fully nonlinear regime and for non--Gaussian statistics, exact monotonicity need not hold, but in practice $F_S(M_{\min},\alpha)$ is found to be nearly monotonic for the observables considered here.
+
+
+By construction, $F_S=0$ for pure DMO, $F_S=1$ when $\rho_{\rm R}$ reproduces the full Hydro result, and $0<F_S<1$ when only part of the Hydro--DMO difference is captured. The function $F_S(M_{\min},\alpha)$ is cumulative in both arguments: at fixed $\alpha$ it includes the contribution of \emph{all} haloes heavier than $M_{\min}$.
+
+\subsection{Limitations of the cumulative approach}
+
+The cumulative response $F_S(M_{\min},\alpha)$ is an intuitive diagnostic, but it has two important limitations:
+
+\begin{itemize}
+\item It does not directly isolate the contribution from a \emph{finite} mass range. The value at $M_{\min}=10^{13}M_\odot/h$ includes the effect of all haloes with $M\ge 10^{13}M_\odot/h$, not just the $10^{13}$--$10^{13.5}M_\odot/h$ bin, for example.
+
+\item The mapping from $\rho$ to $S$ is nonlinear, especially for non--Gaussian statistics such as peak counts. Consequently, the change in $S$ induced by replacing two mass ranges together is not guaranteed to be the simple sum of the changes induced by each range separately.
+\end{itemize}
+
+These issues make it difficult to interpret $F_S(M_{\min},\alpha)$ as a true ``distribution'' over mass. To obtain a cleaner, more local description, we now switch to a mass--bin formalism that works directly in finite mass intervals.
+
+\subsection{Discrete mass--bin formalism (fixed radius)}
+\label{subsec:mass_bins}
+
+We partition the halo population into a set of discrete mass bins
+\begin{equation}
+[M_1,M_2),\ [M_2,M_3),\ \ldots,\ [M_{N_{\rm bin}},M_{N_{\rm bin}+1}),
+\end{equation}
+and fix the radius factor $\alpha$ (for notational simplicity).
+
+For a given mass bin $[M_a,M_b)$ we define a \emph{tile--Replace} field
+\begin{equation}
+\rho_{\rm R}^{\rm bin}(\mathbf{x},z; M_a,M_b,\alpha)
+=
+\rho_{\rm D}(\mathbf{x},z)
++
+\sum_{i \in \mathcal{H}_{[M_a,M_b)}(z)}
+\Bigl[
+\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha)
+-
+\rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
+\Bigr],
+\label{eq:replace_bin}
+\end{equation}
+where $\mathcal{H}_{[M_a,M_b)}(z)$ denotes the subset of haloes with $M_i\in[M_a,M_b)$. All haloes outside the bin remain DMO at all radii.
+
+The corresponding observable is denoted $S_{\rm R}^{\rm bin}(M_a,M_b,\alpha)$, and we define a \emph{tile response fraction}
+\begin{equation}
+\Delta F_S^{\rm bin}(M_a,M_b,\alpha)
+\equiv
+\frac{S_{\rm R}^{\rm bin}(M_a,M_b,\alpha) - S_{\rm D}}{S_{\rm H} - S_{\rm D}}.
+\label{eq:tile_FS}
+\end{equation}
+This quantity measures the fraction of the total Hydro--DMO difference in $S$ that is sourced by haloes in the finite mass interval $[M_a,M_b)$ within the chosen radius factor $\alpha$.
+
+The mass--bin and cumulative descriptions are related. Under the approximation that contributions from different mass bins add linearly,
+\begin{equation}
+F_S(M_{\min}=M_j,\alpha)
+\approx
+\sum_{a: M_a \ge M_j}
+\Delta F_S^{\rm bin}(M_a,M_{a+1},\alpha),
+\end{equation}
+i.e.\ the cumulative response at threshold $M_j$ can be approximately recovered as the sum of tile responses from all bins above $M_j$. In the simulations we explicitly test this approximate additivity by comparing the left-- and right--hand sides for a range of thresholds and observables. Deviations quantify the nonlinearity of the mapping $S[\rho]$.
+
+\paragraph{Approximate reconstruction of $F_S$ from mass bins.}
+Let the halo mass function at redshift $z$ be partitioned into disjoint bins
+\begin{equation}
+[M_1,M_2),\ [M_2,M_3),\ \ldots,\ [M_{N_{\rm bin}},M_{N_{\rm bin}+1}),
+\end{equation}
+with $M_1 = M_{\rm min,box}$ and $M_{N_{\rm bin}+1}$ exceeding the most massive halo in the simulation. Define the set of bin indices $\mathcal{A}(M_{\min})$ by
+\begin{equation}
+\mathcal{A}(M_{\min})
+=
+\left\{a \,\big|\, [M_a,M_{a+1}) \subset [M_{\min},\infty) \right\}.
+\end{equation}
+For a fixed $\alpha$, the cumulative Replace field at threshold $M_{\min}$ may be written as
+\begin{equation}
+\rho_{\rm R}(\mathbf{x},z;M_{\min},\alpha)
+=
+\rho_{\rm D}(\mathbf{x},z)
++
+\sum_{a \in \mathcal{A}(M_{\min})}
+\sum_{i \in \mathcal{H}_{[M_a,M_{a+1})}(z)}
+\Bigl[
+\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha) - \rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
+\Bigr].
+\label{eq:rhoR_bins_vs_threshold}
+\end{equation}
+In an \emph{additive response approximation} where the change in $S$ from replacing multiple mass bins is the sum of the changes induced by each bin separately, we may write
+\begin{equation}
+S_{\rm R}(M_{\min},\alpha)
+-
+S_{\rm D}
+\approx
+\sum_{a \in \mathcal{A}(M_{\min})}
+\Bigl[
+S_{\rm R}^{\rm bin}(M_a,M_{a+1},\alpha) - S_{\rm D}
+\Bigr].
+\label{eq:additive_approx}
+\end{equation}
+Dividing both sides by $S_{\rm H}-S_{\rm D}$ yields
+\begin{equation}
+F_S(M_{\min},\alpha)
+\approx
+\sum_{a\in \mathcal{A}(M_{\min})}
+\Delta F_S^{\rm bin}(M_a,M_{a+1},\alpha).
+\label{eq:FS_vs_bin_sum}
+\end{equation}
+This relation is tested explicitly in the simulations. The degree to which Eq.~\eqref{eq:FS_vs_bin_sum} holds, as a function of scale and statistic $S$, quantifies how close the baryonic response is to a linear superposition of contributions from disjoint mass bins.
+\paragraph{Non--additivity diagnostic.}
+For a given threshold $M_{\min}$ and scale (e.g.\ Fourier mode $k$), we define the fractional non--additivity
+\begin{equation}
+\epsilon_S(M_{\min},\alpha;k)
+\equiv
+\frac{
+F_S^{\rm cum}(M_{\min},\alpha;k)
+-
+\sum_{a \in \mathcal{A}(M_{\min})}
+\Delta F_{S}^{\rm bin}(M_a,M_{a+1},\alpha;k)
+}{
+F_S^{\rm cum}(M_{\min},\alpha;k)
+},
+\end{equation}
+where the dependence on scale $k$ is made explicit. Values $|\epsilon_S|\ll 1$ indicate that bin contributions are approximately additive for that statistic and scale, whereas large $|\epsilon_S|$ signal strong nonlinear interactions between mass ranges.
+
+
+\subsection{Incorporating radius: cumulative versus radius bins}
+\label{subsec:radius_bins}
+
+The constructions above can be repeated for the radial dependence. For simplicity, we first fix mass and vary $\alpha$ cumulatively; we then move to discrete radius bins.
+
+\paragraph{Cumulative in radius.}
+At fixed $M_{\min}$, the Replace field in Eq.~\eqref{eq:replace_cumulative} already defines a cumulative radius dependence: inside $\alpha R_{200}$, haloes above $M_{\min}$ are replaced; outside, they remain DMO. For a given observable $S$, the cumulative response $F_S(M_{\min},\alpha)$ in Eq.~\eqref{eq:cumulative_FS} can be viewed as a function of $\alpha$ at fixed $M_{\min}$, increasing as larger radii are included.
+
+\paragraph{Discrete radius bins.}
+In practice, we work with a small set of discrete radius factors
+\begin{equation}
+\alpha_1,\ \alpha_2,\ \ldots,\ \alpha_{N_\alpha},
+\end{equation}
+for example $\alpha=\{0.5,1,2,5\}$. Rather than attempting to define a continuous derivative with respect to $\alpha$, it is more robust to treat each interval between successive factors as a finite radius bin. For a given mass bin $[M_a,M_b)$ and a pair $(\alpha_c,\alpha_d)$ with $\alpha_c < \alpha_d$, we can construct a tile--Replace field in which haloes with $M\in[M_a,M_b)$ are replaced only in the radial shell $\alpha_c R_{200} \le r < \alpha_d R_{200}$, and remain DMO elsewhere. This allows us to define a tile response
+\begin{equation}
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_c,\alpha_d)
+=
+\frac{S_{\rm R}^{\rm bin}(M_a,M_b;\alpha_c,\alpha_d) - S_{\rm D}}{S_{\rm H} - S_{\rm D}},
+\end{equation}
+which measures how much of the Hydro--DMO difference arises from that finite mass--and--radius shell.
+
+Equivalently, when only cumulative maps at a discrete set of $\alpha_i$ are available, shell contributions can be approximated by finite differences, e.g.
+\begin{equation}
+\Delta F_S^{\rm shell}(M_a,M_b;\alpha_c,\alpha_d)
+\approx
+\Delta F_S^{\rm bin}(M_a,M_b,\alpha_d)
+-
+\Delta F_S^{\rm bin}(M_a,M_b,\alpha_c),
+\end{equation}
+for neighbouring $\alpha_c,\alpha_d$. In either case, the basic building block is a finite ``tile'' in $(M,\alpha)$ rather than a continuous derivative.
+\paragraph{Radius shells from cumulative radii.}
+Let $\{\alpha_1,\alpha_2,\ldots,\alpha_{N_\alpha}\}$ be an ordered set of radius factors, with $\alpha_{i+1} > \alpha_i$. For a given mass bin $[M_a,M_b)$ we denote by
+\begin{equation}
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i)
+\equiv
+\frac{S_{\rm R}^{\rm bin}(M_a,M_b;\alpha_i) - S_{\rm D}}{S_{\rm H} - S_{\rm D}}
+\end{equation}
+the response when haloes in that bin are replaced inside $r<\alpha_i R_{200}$.
+
+Assuming approximate additivity in radius (i.e.\ the response from two non--overlapping radial shells adds linearly), the contribution from the \emph{shell} between $(\alpha_i,\alpha_{i+1})$ can be estimated as the finite difference
+\begin{equation}
+\Delta F_S^{\rm shell}(M_a,M_b;\alpha_i,\alpha_{i+1})
+\approx
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_{i+1})
+-
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i).
+\label{eq:shell_FS}
+\end{equation}
+This quantity measures the fraction of the total Hydro--DMO difference in $S$ that is sourced by haloes in $[M_a,M_b)$ at radii $\alpha_i R_{200} \le r < \alpha_{i+1}R_{200}$. As with Eq.~\eqref{eq:FS_vs_bin_sum}, the accuracy of Eq.~\eqref{eq:shell_FS} is tested numerically, and deviations indicate non--additive interactions between different radial layers.
+
+
+\subsection{Discrete response kernel in mass--radius space}
+\label{subsec:kernel}
+
+The mass--bin and radius--bin constructions together define a \emph{discrete response kernel} for each observable $S$,
+\begin{equation}
+K_S(M_a,M_b;\alpha_i;z_k)
+\equiv
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i,z_k),
+\end{equation}
+where $[M_a,M_b)$ runs over halo mass bins, $\alpha_i$ runs over a finite set of radius factors or shells, and $z_k$ labels redshift slices. Each entry $K_S$ quantifies the fraction of the total baryonic impact on $S$ arising from haloes in that mass bin and radius layer at that redshift.
+
+Summing the kernel over mass and radius approximately recovers the full Hydro--DMO difference:
+\begin{equation}
+\sum_{a,i}
+K_S(M_a,M_b;\alpha_i;z_k)
+\approx 1,
+\end{equation}
+provided that contributions from distinct tiles are approximately additive. Summing over either mass or radius yields marginal response profiles,
+\begin{align}
+K_S^{\rm mass}(M_a,M_b;z_k)
+&=
+\sum_i K_S(M_a,M_b;\alpha_i;z_k),\\
+K_S^{\rm radius}(\alpha_i;z_k)
+&=
+\sum_a K_S(M_a,M_b;\alpha_i;z_k),
+\end{align}
+which answer questions such as ``which halo masses dominate the baryonic effect on $S$?'' and ``which radii matter most?''
+
+\paragraph{Approximate normalization of the kernel.}
+In the ideal limit where contributions from all mass--radius tiles add linearly and the binning covers all haloes and radii relevant for the observable, the tile responses would sum to unity,
+\begin{equation}
+\sum_{a=1}^{N_{\rm bin}}
+\sum_{i=1}^{N_\alpha}
+K_S(M_a,M_{a+1};\alpha_i;z_k)
+= 1.
+\label{eq:kernel_norm_ideal}
+\end{equation}
+\emph{Proof sketch:} by definition,
+\begin{equation}
+K_S(M_a,M_{a+1};\alpha_i;z_k)
+=
+\frac{S_{\rm R}^{\rm bin}(M_a,M_{a+1};\alpha_i;z_k) - S_{\rm D}(z_k)}{S_{\rm H}(z_k) - S_{\rm D}(z_k)}.
+\end{equation}
+If the change in $S$ from replacing all tiles simultaneously equals the sum of changes induced by each tile individually,
+\begin{equation}
+S_{\rm H}(z_k) - S_{\rm D}(z_k)
+\approx
+\sum_{a,i}
+\Bigl[
+S_{\rm R}^{\rm bin}(M_a,M_{a+1};\alpha_i;z_k) - S_{\rm D}(z_k)
+\Bigr],
+\end{equation}
+then dividing through by $S_{\rm H}-S_{\rm D}$ yields Eq.~\eqref{eq:kernel_norm_ideal}.
+
+In practice, we measure the degree of completeness and additivity via
+\begin{equation}
+\mathcal{N}_S(z_k)
+\equiv
+\sum_{a,i}
+K_S(M_a,M_{a+1};\alpha_i;z_k),
+\end{equation}
+and quote deviations of $\mathcal{N}_S$ from unity. Values of $\mathcal{N}_S$ close to one indicate that the chosen tiling in mass and radius captures most of the baryonic signal in $S$, with weak nonlinear cross--terms between tiles.
+
+\paragraph{Mass and radius marginals.}
+The mass--marginal response at redshift $z_k$ is defined as
+\begin{equation}
+K_S^{\rm mass}(M_a,M_{a+1};z_k)
+\equiv
+\sum_{i=1}^{N_\alpha}
+K_S(M_a,M_{a+1};\alpha_i;z_k),
+\end{equation}
+so that
+\begin{equation}
+\sum_a
+K_S^{\rm mass}(M_a,M_{a+1};z_k)
+=
+\mathcal{N}_S(z_k).
+\end{equation}
+Similarly, the radius--marginal response is
+\begin{equation}
+K_S^{\rm radius}(\alpha_i;z_k)
+\equiv
+\sum_{a=1}^{N_{\rm bin}}
+K_S(M_a,M_{a+1};\alpha_i;z_k),
+\end{equation}
+with
+\begin{equation}
+\sum_i
+K_S^{\rm radius}(\alpha_i;z_k)
+=
+\mathcal{N}_S(z_k).
+\end{equation}
+These marginals are the discrete analogues of integrating a continuous kernel $\mathcal{R}_S(\ln M,\ln\alpha,z)$ over mass or radius.
+
+
+\subsection{Cumulative and discrete vector response}
+
+So far the discussion has focused on turning a single mass bin or mass threshold ``on'' at a time. More generally, we can regard the baryonic configuration as a vector of inputs.
+
+\paragraph{Cumulative vector.}
+In the cumulative picture, we consider a set of mass thresholds $M_{\min}^{(1)},M_{\min}^{(2)},\ldots$ and, optionally, a set of radius thresholds $\alpha^{(1)},\alpha^{(2)},\ldots$. Each choice defines a component of a \emph{cumulative response vector}
+\begin{equation}
+\mathbf{F}_S
+=
+\left\{
+F_S\bigl(M_{\min}^{(p)},\alpha^{(q)}\bigr)
+\right\}_{p,q},
+\end{equation}
+which encodes how $S$ responds to including all haloes above various thresholds. This vector is useful for quick diagnostics and for comparing cumulative response patterns between different statistics.
+
+\paragraph{Discrete tile vector.}
+In the discrete binning picture, we instead define a vector of tile responses
+\begin{equation}
+\boldsymbol{\Delta F}_S
+=
+\left\{
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i;z_k)
+\right\}_{a,b,i,k},
+\end{equation}
+which is simply a flattened version of the kernel $K_S$. This vector can be treated as a set of basis coefficients describing how the baryonic perturbation is distributed over halo mass, radius, and redshift. Under approximate additivity, the total Hydro--DMO difference in $S$ can be reconstructed as a linear combination of these basis elements.
+
+\paragraph{Linear expansion in tile amplitudes.}
+Let us collect all tile responses at a given redshift into a vector
+\begin{equation}
+\boldsymbol{\Delta F}_S
+=
+\bigl(
+\Delta F_S^{\rm bin}(M_1,M_2;\alpha_1),\ldots,
+\Delta F_S^{\rm bin}(M_a,M_{a+1};\alpha_i),\ldots
+\bigr)^\top,
+\end{equation}
+and let $\mathbf{w}$ denote a vector of tile ``activation'' coefficients specifying how strongly a given physical model (e.g.\ Hydro, a BCM) perturbs each mass--radius tile relative to the DMO baseline. In the linear response regime, the total fractional change in the observable,
+\begin{equation}
+\Delta_S
+\equiv
+\frac{S - S_{\rm D}}{S_{\rm H}-S_{\rm D}},
+\end{equation}
+can be approximated as
+\begin{equation}
+\Delta_S \approx \mathbf{w}^\top \boldsymbol{\Delta F}_S.
+\label{eq:linear_tile_model}
+\end{equation}
+For the Hydro simulation itself, $\mathbf{w}$ is close to a vector of ones (all tiles ``fully'' baryonified), while for a BCM or a partially corrected analysis some components of $\mathbf{w}$ may be smaller in magnitude or even zero (tiles that are left DMO--like).
+
+The accuracy of Eq.~\eqref{eq:linear_tile_model} can be quantified by constructing synthetic configurations in which only a subset of tiles is turned on and comparing the true $\Delta_S$ from the Replace fields to the linear prediction $\mathbf{w}^\top \boldsymbol{\Delta F}_S$. This provides a direct test of the linearity and additivity assumptions underlying the tile decomposition.
+
+
+This discrete vector formalism extends naturally to models that modify baryons in multiple tiles simultaneously. For example, a baryonic correction model (BCM) with parameters $\boldsymbol{\theta}$ induces a pattern of modifications $\mathbf{w}(\boldsymbol{\theta})$ over tiles; the corresponding prediction for the baryonic effect on $S$ can then be written schematically as
+\begin{equation}
+\Delta S_{\rm BCM}
+\approx
+\sum_{a,b,i,k}
+w_{abik}(\boldsymbol{\theta})\,
+\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i;z_k)\,
+\bigl(S_{\rm H} - S_{\rm D}\bigr),
+\end{equation}
+which can be compared directly to the Hydro benchmark and used to quantify response mismatches.
+
+\subsection{Summary}
+
+In summary, the response formalism is built in layers. The cumulative response $F_S(M_{\min},\alpha)$ provides an intuitive, threshold--based view of how baryons in increasingly small haloes and larger radii affect an observable. Its limitations are addressed by a discrete mass--bin and radius--bin construction, which defines a tile response $\Delta F_S^{\rm bin}$ for each finite mass--radius shell. The resulting kernel $K_S(M_a,M_b;\alpha_i;z_k)$ and its vectorized form $\boldsymbol{\Delta F}_S$ supply a compact, empirical map of where baryonic effects originate in halo space and a natural language for testing whether baryonic models reproduce the correct pattern across multiple statistics.
+
+\section{Software and third party data repository citations}
+\label{sec:cite}
+
+\begin{acknowledgments}
+\end{acknowledgments}
+
+\begin{contribution}
+All authors contributed equally to the Terra Mater collaboration.
+\end{contribution}
+
+\facilities{HST(STIS), Swift(XRT and UVOT), AAVSO, CTIO:1.3m, CTIO:1.5m, CXO}
+
+\software{
+astropy,
+Cloudy,
+Source Extractor
+}
+
+\appendix
+
+\section{Appendix information}
+
+\bibliography{sample701}{}
+\bibliographystyle{aasjournalv7}
+
+\end{document}
