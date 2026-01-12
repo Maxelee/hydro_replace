@@ -1369,19 +1369,33 @@ def run_lensplane_generation(args, dmo_particles, hydro_particles, halos, comm):
             config_count += 1
             
             # Check if this config already exists (incremental mode)
+            # Now checks ALL LPs and ALL pps slices for this snapshot
             if args.incremental:
                 config_label = f"hydro_replace_Ml_{M_lo:.2e}_Mu_{M_hi:.2e}_R_{R_factor}".replace('+', '')
                 config_dir = os.path.join(output_dir, config_label)
-                # File index: snapshot_idx * pps + 0 (check first pps slice)
-                file_idx = snapshot_idx * lp_config['planes_per_snapshot']
-                check_file = os.path.join(config_dir, 'LP_00', f'lenspot{file_idx:02d}.dat')
-                if os.path.exists(check_file):
+                
+                # Check all LP directories and all pps slices for this snapshot
+                pps = lp_config['planes_per_snapshot']
+                all_exist = True
+                missing_count = 0
+                for lp_idx in range(lp_config['n_realizations']):
+                    for pps_slice in range(pps):
+                        file_idx = snapshot_idx * pps + pps_slice
+                        check_file = os.path.join(config_dir, f'LP_{lp_idx:02d}', f'lenspot{file_idx:02d}.dat')
+                        if not os.path.exists(check_file):
+                            all_exist = False
+                            missing_count += 1
+                
+                if all_exist:
                     if rank == 0:
-                        print(f"\n[{config_count}/{total_configs}] Skipping {label}, R={R_factor} (exists)")
+                        print(f"\n[{config_count}/{total_configs}] Skipping {label}, R={R_factor} (all LPs complete)")
                     continue
-            
-            if rank == 0:
-                print(f"\n[{config_count}/{total_configs}] Processing {label}, R={R_factor}...")
+                else:
+                    if rank == 0:
+                        print(f"\n[{config_count}/{total_configs}] Processing {label}, R={R_factor} ({missing_count} missing files)...")
+            else:
+                if rank == 0:
+                    print(f"\n[{config_count}/{total_configs}] Processing {label}, R={R_factor}...")
             
             config = (M_lo, M_hi, R_factor, label)
             generate_replace_lensplanes_for_config(

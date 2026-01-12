@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=40
 #SBATCH --cpus-per-task=1
-#SBATCH --time=04:00:00
+#SBATCH --time=024:00:00
 #SBATCH -p cca
 #SBATCH --mem=180G
 #SBATCH --array=0-339  # 34 models × 10 realizations = 340 jobs

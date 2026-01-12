@@ -1,505 +1,396 @@
 %% Beginning of file 'sample701.tex'
-
+%%
+%% Version 7.0.1. Created May 2025.
+%% Version 7. Created January 2025.  
+%%
+%% AASTeX v7+ calls the following external packages:
+%% times, hyperref, ifthen, hyphens, longtable, xcolor, 
+%% bookmarks, array, rotating, ulem, and lineno 
+%%
+%% RevTeX is no longer used in AASTeX v7+.
+%%
 \documentclass[linenumbers,trackchanges]{aastex701}
-
+\usepackage{amsmath}
+\usepackage{bm}
+%%
+%% This initial command takes arguments that can be used to easily modify 
+%% the output of the compiled manuscript. Any combination of arguments can be 
+%% invoked like this:
+%%
+%% \documentclass[argument1,argument2,argument3,...]{aastex701}
+%%
+%% Six of the arguments are typestting options. They are:
+%%
+%%  twocolumn   : two text columns, 10 point font, single spaced article.
+%%                This is the most compact and represent the final published
+%%                derived PDF copy of the accepted manuscript from the publisher
+%%  default     : one text column, 10 point font, single spaced (default).
+%%  manuscript  : one text column, 12 point font, double spaced article.
+%%  preprint    : one text column, 12 point font, single spaced article.  
+%%  preprint2   : two text columns, 12 point font, single spaced article.
+%%  modern      : a stylish, single text column, 12 point font, article with
+%% 		  wider left and right margins. This uses the Daniel
+%% 		  Foreman-Mackey and David Hogg design.
+%%
+%% Note that you can submit to the AAS Journals in any of these 6 styles.
+%%
+%% There are other optional arguments one can invoke to allow other stylistic
+%% actions. The available options are:
+%%
+%%   astrosymb    : Loads Astrosymb font and define \astrocommands. 
+%%   tighten      : Makes baselineskip slightly smaller, only works with 
+%%                  the twocolumn substyle.
+%%   times        : uses times font instead of the default.
+%%   linenumbers  : turn on linenumbering. Note this is mandatory for AAS
+%%                  Journal submissions and revisions.
+%%   trackchanges : Shows added text in bold.
+%%   longauthor   : Do not use the more compressed footnote style (default) for 
+%%                  the author/collaboration/affiliations. Instead print all
+%%                  affiliation information after each name. Creates a much 
+%%                  longer author list but may be desirable for short 
+%%                  author papers.
+%% twocolappendix : make 2 column appendix.
+%%   anonymous    : Do not show the authors, affiliations, acknowledgments,
+%%                  and author contributions for dual anonymous review.
+%%  resetfootnote : Reset footnotes to 1 in the body of the manuscript.
+%%                  Useful when there are a lot of authors and affiliations
+%%		    in the front matter.
+%%   longbib      : Print article titles in the references. This option
+%% 		    is mandatory for PSJ manuscripts.
+%%
+%% Since v6, AASTeX has included \hyperref support. While we have built in 
+%% specific %% defaults into the classfile you can manually override them 
+%% with the \hypersetup command. For example,
+%%
+%% \hypersetup{linkcolor=red,citecolor=green,filecolor=cyan,urlcolor=magenta}
+%%
+%% will change the color of the internal links to red, the links to the
+%% bibliography to green, the file links to cyan, and the external links to
+%% magenta. Additional information on \hyperref options can be found here:
+%% https://www.tug.org/applications/hyperref/manual.html#x1-40003
+%%
+%% The "bookmarks" has been changed to "true" in hyperref
+%% to improve the accessibility of the compiled pdf file.
+%%
+%% If you want to create your own macros, you can do so
+%% using \newcommand. Your macros should appear before
+%% the \begin{document} command.
+%%
 \newcommand{\vdag}{(v)^\dagger}
 \newcommand\aastex{AAS\TeX}
 \newcommand\latex{La\TeX}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% The following section outlines numerous optional output that
+%% can be displayed in the front matter or as running meta-data.
+%%
+%% Running header information. A short title on odd pages and 
+%% short author list on even pages. Note that this
+%% information may be modified in production.
+%%\shorttitle{AASTeX v7.0.1 Sample article}
+%%\shortauthors{The Terra Mater collaboration}
+%%
+%% Include dates for submitted, revised, and accepted.
+%%\received{February 1, 2025}
+%%\revised{March 1, 2025}
+%%\accepted{\today}
+%%
+%% Indicate AAS Journal the manuscript was submitted to.
+%%\submitjournal{PSJ}
+%% Note that this command adds "Submitted to " the argument.
+%%
+%% You can add a light gray and diagonal water-mark to the first page 
+%% with this command:
+%% \watermark{text}
+%% where "text", e.g. DRAFT, is the text to appear.  If the text is 
+%% long you can control the water-mark size with:
+%% \setwatermarkfontsize{dimension}
+%% where dimension is any recognized LaTeX dimension, e.g. pt, in, etc.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Use this command to indicate a subdirectory where figures are located.
+%%\graphicspath{{./}{figures/}}
+%% This is the end of the preamble.  Indicate the beginning of the
+%% manuscript itself with \begin{document}.
 
 \begin{document}
 
-\title{The comeback series paper 2}
+\title{Responding to baryons with the baryonic response metric}
+
+%% A significant change from AASTeX v6+ is in the author blocks. Now an email
+%% address is required for each author. This means that each author requires
+%% at least one of the following:
+%%
+%% \author
+%% \affiliation
+%% \email
+%%
+%% If these three commands are not available for each author, the latex
+%% compiler will issue an error and if you force the latex compiler to continue,
+%% it will generate an incomplete pdf.
+%%
+%% Multiple \affiliation commands are allowed and authors can also include
+%% an optional \altaffiliation to indicate a status, i.e. Hubble Fellow. 
+%% while affiliations are indexed as footnotes, altaffiliations are noted with
+%% with a non-numeric footnote that is set away from the numeric \affiliation 
+%% footnotes. NOTE that if an \altaffiliation command is used it must 
+%% come BEFORE the \affiliation call, right after the \author command, in 
+%% order to place the footnotes in the proper location. Because non-numeric
+%% symbols are used, \altaffiliation should be used sparingly.
+%%
+%% In v7+ the \author command takes an optional argument which provides 
+%% additional metadata about the author. Authors can provide the 16 digit 
+%% ORCID, the surname (family or last) name, the given (first or fore-) name, 
+%% and a name suffix, e.g. "Jr.". The syntax is:
+%%
+%% \author[orcid=0000-0002-9072-1121,gname=Gregory,sname=Schwarz]{Greg Schwarz}
+%%
+%% This name metadata in not shown, it is only for parsing by the peer review
+%% system so authors can be more easily identified. This name information will
+%% also be sent to the publisher so they can include it in the CROSSREF 
+%% metadata. Including an orcid will hyperlink the author name to the 
+%% author's ORCID page. Note that  during compilation, LaTeX will do some 
+%% limited checking of the format of the ID to make sure it is valid. If 
+%% the "orcid-ID.png" image file is  present or in the LaTeX pathway, the 
+%% ORCID icon will appear next to the authors name.
+%%
+%% Even though emails are now required for each author, the \email does not
+%% produce output in the compiled manuscript unless the optional "show" command
+%% is used. For example,
+%%
+%% \email[show]{greg.schwarz@aas.org}
+%%
+%% All "shown" emails are show in the bottom left of the first page. Due to
+%% space constraints, only a few emails should be shown. 
+%%
+%% To identify a corresponding author, use the \correspondingauthor command.
+%% The command appends "Corresponding Author: " to the argument it appears at
+%% the bottom left of the first page like the output from \email. 
 
 \author[orcid=0000-0000-0000-0001,sname='North America']{Tundra North America}
 \altaffiliation{Kitt Peak National Observatory}
 \affiliation{University of Saskatchewan}
-\email[show]{fakeemail1@google.com}
+\email[show]{fakeemail1@google.com}  
 
+
+
+%% Use the \collaboration command to identify collaborations. This command
+%% takes an optional argument that is either a number or the word "all"
+%% which tells the compiler how many of the authors above the command to
+%% show. For example "\collaboration[all]{(DELVE Collaboration)}" wil include
+%% all the authors above this command.
+%%
+%% Mark off the abstract in the ``abstract'' environment. 
 \begin{abstract}
-...
+
 \end{abstract}
 
+
+%% Keywords should appear after the \end{abstract} command. 
+%% The AAS Journals now uses Unified Astronomy Thesaurus (UAT) concepts:
+%% https://astrothesaurus.org
+%% You will be asked to selected these concepts during the submission process
+%% but this old "keyword" functionality is maintained in case authors want
+%% to include these concepts in their preprints.
+%%
+%% You can use the \uat command to link your UAT concepts back its source.
 \keywords{\uat{Galaxies}{573}}
+
+%% From the front matter, we move on to the body of the paper.
+%% Sections are demarcated by \section and \subsection, respectively.
+%% Observe the use of the LaTeX \label
+%% command after the \subsection to give a symbolic KEY to the
+%% subsection for cross-referencing in a \ref command.
+%% You can use LaTeX's \ref and \label commands to keep track of
+%% cross-references to sections, equations, tables, and figures.
+%% That way, if you change the order of any elements, LaTeX will
+%% automatically renumber them.
 
 \section{Introduction}
 \label{sec:intro}
 
-% ... your existing introduction text ...
+Realizing the full scientific potential of upcoming weak gravitational lensing surveys such as Euclid, the Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST), and the Nancy Grace Roman Space Telescope requires percent-level control of systematic uncertainties, including the impact of baryonic physics on the matter power spectrum and higher-order statistics. This level of control is made difficult with baryonic feedback from stellar winds, supernova explosions, active galactic nuclei (AGN) which redistribute matter within and around dark matter halos. This redistribution has the effect of suppressing the matter power spectrum by 10--20\% at scales $k \sim 1,h,\mathrm{Mpc}^{-1}$ and altering non-Gaussian statistics such as weak lensing peak counts and the matter bispectrum. If untreated, these effects can bias cosmological parameter constraints, particularly on $S_8 = \sigma_8(\Omega_m/0.3)^{0.5}$ by amounts exceeding statistical uncertainties from Stage-IV data.
+
+Hydrodynamical simulations self-consistently model gas physics, star formation, and feedback providing the most accurate predictions of baryonic effects, but they remain computationally prohibitive for the large volumes and statistical ensembles required by modern surveys. A single flagship hydrodynamical run, such as IllustrisTNG or FLAMINGO, requires tens of millions of CPU hours and cannot easily be repeated across the high-dimensional parameter spaces needed for inference pipelines. 
+
+This computational expense has driven the development of \emph{baryonic correction models} (BCMs), which attempt to capture baryonic effects by post-processing gravity-only dark matter simulations with analytic or semi-analytic prescriptions for gas ejection, stellar fractions, and concentration modifications. These models can be calibrated to match the matter power spectrum suppression observed in hydrodynamical simulations or inferred from external observables such as Sunyaev--Zel'dovich (SZ) and X-ray data making them powerful and physically motivated alternatives to hydrodynamical simulations.
+
+Despite their computational efficiency, BCMs face a fundamental question of physical consistency: if a model is tuned to reproduce one statistic—for example, the 3D matter power spectrum $P(k)$—does it automatically reproduce the correct baryonic impact on other observables, such as the weak lensing convergence power spectrum $C_\ell$, peak counts, minima, or higher-order correlations? 
+
+Recent evidence suggests the answer is no. Comparisons of BCMs against hydrodynamical benchmarks have revealed statistic-dependent discrepancies: a BCM may match $P(k)$ at the few-percent level while failing to reproduce peak count distributions or bispectra. More fundamentally, \citet{miller2025} demonstrated that even a direct \emph{halo-replacement} procedure—swapping DMO halos with their matched hydrodynamical counterparts out to $2R_{200}$ in IllustrisTNG—does not fully recover the hydrodynamical matter power spectrum. This discrepancy implies that some fraction of the baryonic effect arises from lower-mass halos, larger radii, or diffuse intergalactic components not captured by simple halo-based replacement. If even perfect halo profiles fail to reconstruct $P(k)$, then BCMs tuned to $P(k)$ must be compensating by placing baryonic modifications in regions of halo mass, radius, and redshift space that are inconsistent with hydrodymaical halos. It could then be true that these modifications then propagate inconsistently to other statistics.
+
+This raises two critical questions. First, which halo masses, radii, and redshifts dominate the baryonic impact on a given observable? Understanding this attribution is essential for determining where BCMs must be most accurate and where approximations are tolerable. Second, how can we test whether a BCM is physically self-consistent across multiple observables? Matching one statistic is insufficient if the underlying density profiles of halos differ from hydrodynamical predictions in ways that matter for other statistics. Answering these questions requires a unified framework that quantifies the response of arbitrary observables to baryonic modifications in specific regions of halo parameter space and provides a diagnostic for cross-statistic consistency.
+
+In this work, we introduce a self consistent formalism that addresses both questions as functions of mass radius and redshift. We define a family of hybrid ``Replace" density fields in which DMO halos at a redshift $z$ and above a mass threshold $M_{\min}$ are replaced by their hydrodynamical counterparts within a radial factor $\alpha R_{200}$, and construct a cumulative response function $F_S(M_{\min},\alpha)$ that measures the fraction of the total baryonic effect on observable $S$ captured by this replacement. By discretizing halo mass finite bins, we further define a tile response kernel $K_S(M_a,M_b;\alpha_i;z_k)$ that provides an empirical map of where baryonic effects originate in $(M,\alpha,z)$ space for each statistic. This kernel can be marginalized over mass or radius to answer questions such as which halo mass range contributes most to the convergence power spectrum at $\ell=1000$?'' or ``how far in radius does one need to model correctly for peak counts at signal-to-noise $\nu=4$?'' Crucially, the formalism applies to any summary statistic—matter power spectra, weak lensing two-point functions, peak counts, minima, PDFs, and higher-order moments—enabling direct comparisons of response patterns across observables.
+
+We apply this framework to IllustrisTNG simulations, computing response kernels for the 3D matter power spectrum, projected 2D power spectra, weak lensing convergence power, and non-Gaussian peak statistics. We then perform baryon corrections with various BCMs to assess whether BCMs place baryonic effects in the correct halo parameter space. A BCM that matches $K_S^{\mathrm{Hydro}}$ for multiple statistics is physically consistent. 
+
+This paper is organized as follows. In Section~\ref{sec:formalism}, we develop the cumulative and discrete response formalisms, define the tile kernel $K_S(M_a,M_b;\alpha_i;z_k)$, and establish the mathematical properties of response fractions. In Section~\ref{sec:simulations}, we describe the IllustrisTNG DMO and Hydro runs, the halo-matching procedure, and the construction of Replace density fields. Section~\ref{sec:results_matter} presents response kernels for matter power spectra, testing additivity and quantifying the contribution of different mass--radius shells. Section~\ref{sec:results_WL} extends the analysis to weak lensing observables, including convergence power and peak counts. Section~\ref{sec:BCM} compares BCM response kernels to hydrodynamical benchmarks and discusses implications for Stage-IV survey strategies. We summarize our findings and discuss future extensions in Section~\ref{sec:conclusions}.
 
 
-\section{A Mass--Radius--Redshift Response Formalism}
+
+\section{A Response Formalism}
 \label{sec:formalism}
+We begin with a general treatment of the response for some field level statistic to baryons. In general we can define a density field as 
+\begin{equation}\label{eq:general_replace_density}
+    \rho_{R}(\bm{x}, z) = \rho_D(\bm{x}, z)  + \sum_{i \in H} \left[\rho_H^i(\bm{x}, z) - \rho_{D}^i(\bm{x}, z)\right]
+\end{equation}
+where $\rho_D(\bm{x}, z)$ is the density in a dark matter only simulation at coordinat $\bm{x}$ and redshift $z$. Given some set of coordinates described by $H$, the dark matter density at that location, $\rho_D^i$ can be modified via a replacement with the hydro density, $\rho_H^i$. In the above, the framework is general such that $H$ can signify any chosen coordinates, but for this work, we will choose $H$ to be a set of halos with masses $M$ and radius factors $\alpha R_{200}$. To avoid double-counting where halo regions overlap, we assign priority by decreasing halo mass. For a given location $\bm{x}$, if multiple halos' replacement regions contain $\bm{x}$, only the most massive halo performs the replacement at that location. 
+Mathematically, we define:
 
-In this section a response formalism is introduced that quantifies how baryonic feedback in haloes of different mass and radius modifies cosmological observables. The construction proceeds in three steps. First, a cumulative framework in terms of mass thresholds $M_{\min}$ and a fixed radial factor $\alpha$ is defined. Second, the limitations of this cumulative picture are addressed by moving to a discrete mass--bin and radius--bin description. Finally, the formalism is generalized to a vector of inputs, allowing simultaneous changes in multiple mass and radius ranges.
-
-\subsection{Reference fields and halo catalogues}
-
-We start from \emph{matched} gravity--only (DMO) and full hydrodynamical (Hydro) simulations sharing the same initial conditions.
-
-\paragraph{DMO field:}
 \begin{equation}
-\rho_{\rm D}(\mathbf{x},z)
-=
-\text{gravity--only dark matter density at position } \mathbf{x} \text{ and redshift } z.
+\rho_R(\bm{x},z) = \rho_D(\bm{x},z) + \sum_{i \in H(M,z)} \theta_i(\bm{x}) 
+\left[\rho_H^i(\bm{x},\alpha) - \rho_D^i(\bm{x},\alpha)\right],
 \end{equation}
 
-\paragraph{Hydro field:}
+where the indicator function is
 \begin{equation}
-\rho_{\rm H}(\mathbf{x},z)
-=
-\text{total matter (DM + gas + stars) in the hydrodynamical run.}
+\theta_i(\bm{x}) = \begin{cases}
+1 & \text{if } |\bm{x}-\bm{x}_i| < \alpha R_{200}^i \text{ and } i = \arg\max_j M_j 
+\text{ among all } j \text{ with } |\bm{x}-\bm{x}_j| < \alpha R_{200}^j, \\
+0 & \text{otherwise}.
+\end{cases}
 \end{equation}
+This ensures that each spatial point receives replacement from at most one halo.
 
-\paragraph{Baryonic difference:}
-\begin{equation}
-\Delta\rho_{\rm bar}(\mathbf{x},z)
-\equiv
-\rho_{\rm H}(\mathbf{x},z) - \rho_{\rm D}(\mathbf{x},z),
+To make the intuition clearer, we will rewrite Eq.~\ref{eq:general_replace_density} as 
+\begin{equation}\label{eq:Mass_alpha_z_replace_density}
+    \rho_{R}(\bm{x}, z) = \rho_D(\bm{x}, z)  + \sum_{i \in H(M, z)} \left[\rho_H^i(\bm{x}, \alpha) - \rho_{D}^i(\bm{x}, \alpha)\right],
 \end{equation}
-which encodes depletion in halo cores, enhancement in outskirts and the intergalactic medium, and the net redistribution of mass.
+to make clear that we iterate over some set of halos with masses $M$ and at redshift $z$, and for each, we replace within regions of $\alpha R_200$. 
 
-A bijective halo--matching procedure (e.g.\ based on particle ID overlap, or position and velocity) is used to construct a halo catalogue $\mathcal{H}(z)$ at each redshift, pairing each DMO halo $i$ with its Hydro counterpart. For each halo we record its mass $M_i$ (e.g.\ $M_{200}$), virial radius $R_{200}^{(i)}$, position $\mathbf{x}_i$, and member particles or cells in both runs.
-
-\subsection{Cumulative mass--threshold Replace operator (fixed radius)}
-\label{subsec:cumulative_mass}
-
-To build intuition, it is useful to begin with a \emph{cumulative} description in mass, at fixed replacement radius $\alpha R_{200}$.
-
-For a given mass threshold $M_{\min}$ and radius factor $\alpha$, we define a hybrid ``Replace'' density field
+As an example, consider the case $M_{\min} = 10^{13}\,M_\odot h^{-1}$ and $\alpha_0=1$. 
+For each halo $i$ satisfying these criteria, we define extraction regions:
 \begin{equation}
-\rho_{\rm R}(\mathbf{x},z; M_{\min},\alpha)
-=
-\rho_{\rm D}(\mathbf{x},z)
-+
-\sum_{i \in \mathcal{H}(M_{\min},z)}
-\Bigl[
-\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha)
--
-\rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
-\Bigr],
-\label{eq:replace_cumulative}
-\end{equation}
-where $\mathcal{H}(M_{\min},z)$ denotes the set of haloes at redshift $z$ with $M_i \ge M_{\min}$, and
-\begin{equation}
-\rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
-=
+\rho_{D}^{i}(\bm{x};\alpha=1) =
 \begin{cases}
-\rho_{\rm D}(\mathbf{x}) & \text{if } |\mathbf{x}-\mathbf{x}_i| < \alpha R_{200}^{(i)},\\[3pt]
+\rho_{D}(\bm{x}) & \text{if } |\bm{x}-\bm{x}_i| < R_{200}^{i} \text{ AND } M^i \geq 10^{13}\,M_\odot h^{-1},\\
 0 & \text{otherwise},
 \end{cases}
-\qquad
-\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha)
-=
+\end{equation}
+
+\begin{equation}
+\rho_{H}^{i}(\bm{x};\alpha=1) =
 \begin{cases}
-\rho_{\rm H}(\mathbf{x}) & \text{if } |\mathbf{x}-\mathbf{x}_i| < \alpha R_{200}^{(i)},\\[3pt]
+\rho_{H}(\bm{x}) & \text{if } |\bm{x}-\bm{x}_i| < R_{200}^{i} \text{ AND } M^i \geq 10^{13}\,M_\odot h^{-1},\\
 0 & \text{otherwise}.
 \end{cases}
 \end{equation}
 
-In words, for all haloes with $M_i \ge M_{\min}$ the DMO density is subtracted inside $\alpha R_{200}$ and replaced by the corresponding Hydro density; everything else remains DMO.
+In the limit of $M_{\rm min}$ goes to 0 or $\alpha$ becomes $\infty$, the field becomes purely hydro, and inversely, the field becomes purely dark matter only. It can then be thought of that $\rho_R$ interpolates between the DMO and hydro fields as the mass threshold and radius factor are modified. 
 
-In the limiting cases,
-\begin{align}
-M_{\min}\to\infty \ \text{or}\ \alpha\to 0
-&\ \Rightarrow\ \rho_{\rm R}\to \rho_{\rm D},\\
-M_{\min}\to M_{\rm min,box},\ \alpha\to\infty
-&\ \Rightarrow\ \rho_{\rm R}\to \rho_{\rm H},
-\end{align}
-so that $\rho_{\rm R}$ interpolates between the DMO and Hydro fields as $(M_{\min},\alpha)$ are varied.
-
-For any observable $S$ (e.g.\ $P(k)$ at fixed $k$, $C_\ell$ at fixed $\ell$, peak counts at fixed $\nu$), measured in the DMO, Hydro and Replace fields as $S_{\rm D}$, $S_{\rm H}$ and $S_{\rm R}(M_{\min},\alpha)$, we define a \emph{cumulative response fraction}
-\begin{equation}
-F_S(M_{\min},\alpha)
-\equiv
-\frac{S_{\rm R}(M_{\min},\alpha) - S_{\rm D}}{S_{\rm H} - S_{\rm D}}.
-\label{eq:cumulative_FS}
+For any statistic that we measure from the resulting replace field ($S_R$), we can assume that its value is somewhere between the dark matter only ($S_D$) and hydro versions ($S_H$) of the same statistic allowing us to define some response fraction, 
+\begin{equation}\label{eq:cum_resp_func}
+    F_S(M_{\rm min}, \alpha) = \dfrac{S_R(M_{\rm min}, \alpha) - S_D}{S_H-S_D}.
 \end{equation}
-For fixed $\alpha$ and $z$, consider the map
-\begin{equation}
-M_{\min} \mapsto F_S(M_{\min},\alpha;z).
+For a fixed $\alpha$ and redshift $z$, we can see that the fraction approaches $0$ as the minimum mass approaches infinity, and 1 as it approaches 0. Or intuitively, when no mass is replaced, the fraction is 0 reflecting that the statistic extracted from the replace field is the same as in a dark matter only simulation, while when all masses are included, the field and resulting statistic is purely hydro. 
+
+
+The above definitions using $M_{\rm min}$ are inherently cumulative as they incorporate all halos above some threshold mass, and replacement regions in spheres according to $\alpha$. The response fraction then tells us for a given statistic, how low, and how far out do we need to go to capture the full baryonic effects on the given statistic. For example, peak counts, which are sensitive to the collapsed cores of massive halos may show that one must only match density profiles of massive $10^{13}$ and above halos out to $0.5 \times R200$, while the power spectrum may require more. We will show in \S\ref{sec:} various statistics and how much BCMs must do to approach them. 
+
+In the discrete version, we partition halo masses and radii into finite bins 
+and define the response from a specific mass-radius tile. For a mass bin 
+$[M_a, M_{a+1})$ and radius shell $[\alpha_i R_{200}, \alpha_{i+1} R_{200})$, 
+we compute a Replace field with halos in that bin replaced only within the 
+specified radius shell. The tile response fraction is then:
+\begin{equation}\label{eq:disc_resp_func}
+    \Delta F_S(M_a, M_{a+1}; \alpha_i, \alpha_{i+1}) = 
+    \dfrac{S_R(M_a, M_{a+1}; \alpha_i, \alpha_{i+1}) - S_D}{S_H-S_D},
 \end{equation}
-By construction, $F_S$ satisfies the following properties:
-
-\paragraph{Boundary conditions.}
-In the limits where no haloes or all haloes are replaced,
-\begin{align}
-\lim_{M_{\min}\to\infty} F_S(M_{\min},\alpha;z)
-&=
-\frac{S_{\rm D} - S_{\rm D}}{S_{\rm H} - S_{\rm D}}
-= 0,
-\\[3pt]
-\lim_{M_{\min}\to M_{\rm min,box}} F_S(M_{\min},\alpha\to\infty;z)
-&=
-\frac{S_{\rm H} - S_{\rm D}}{S_{\rm H} - S_{\rm D}}
-= 1,
-\end{align}
-provided that the Replace field in this limit reproduces $\rho_{\rm H}$ up to numerical accuracy.
-
-\paragraph{Monotonicity (ideal case).}
-In an idealized, linear response regime where the baryonic contribution of each halo to $\Delta S \equiv S_{\rm H}-S_{\rm D}$ is independent and non--negative, the cumulative response satisfies
-\begin{equation}
-\frac{\partial F_S(M_{\min},\alpha;z)}{\partial M_{\min}} \le 0.
+where $S_R(M_a, M_{a+1}; \alpha_i, \alpha_{i+1})$ is the statistic measured from 
+the Replace field with halos in the specified mass-radius bin activated. Under the assumption that contributions from different mass-radius tiles combine 
+additively, we can recover the cumulative response as:
+\begin{equation}\label{eq:additive_approx}
+    F_S(M_{\min}, \alpha) \approx \sum_{\substack{a: M_a \geq M_{\min} \\ 
+    i: \alpha_i \leq \alpha}} 
+    \Delta F_S(M_a, M_{a+1}; \alpha_i, \alpha_{i+1}),
 \end{equation}
-\emph{Proof sketch:} lowering $M_{\min}$ includes additional haloes in the sum in Eq.~\eqref{eq:replace_cumulative}. If each additional halo contributes a non--negative increment to $S_{\rm R}-S_{\rm D}$, then the numerator of Eq.~\eqref{eq:cumulative_FS} is non--decreasing as $M_{\min}$ decreases, implying that $F_S$ is non--increasing as a function of $M_{\min}$.
-
-In the fully nonlinear regime and for non--Gaussian statistics, exact monotonicity need not hold, but in practice $F_S(M_{\min},\alpha)$ is found to be nearly monotonic for the observables considered here.
-
-
-By construction, $F_S=0$ for pure DMO, $F_S=1$ when $\rho_{\rm R}$ reproduces the full Hydro result, and $0<F_S<1$ when only part of the Hydro--DMO difference is captured. The function $F_S(M_{\min},\alpha)$ is cumulative in both arguments: at fixed $\alpha$ it includes the contribution of \emph{all} haloes heavier than $M_{\min}$.
-
-\subsection{Limitations of the cumulative approach}
-
-The cumulative response $F_S(M_{\min},\alpha)$ is an intuitive diagnostic, but it has two important limitations:
-
-\begin{itemize}
-\item It does not directly isolate the contribution from a \emph{finite} mass range. The value at $M_{\min}=10^{13}M_\odot/h$ includes the effect of all haloes with $M\ge 10^{13}M_\odot/h$, not just the $10^{13}$--$10^{13.5}M_\odot/h$ bin, for example.
-
-\item The mapping from $\rho$ to $S$ is nonlinear, especially for non--Gaussian statistics such as peak counts. Consequently, the change in $S$ induced by replacing two mass ranges together is not guaranteed to be the simple sum of the changes induced by each range separately.
-\end{itemize}
-
-These issues make it difficult to interpret $F_S(M_{\min},\alpha)$ as a true ``distribution'' over mass. To obtain a cleaner, more local description, we now switch to a mass--bin formalism that works directly in finite mass intervals.
-
-\subsection{Discrete mass--bin formalism (fixed radius)}
-\label{subsec:mass_bins}
-
-We partition the halo population into a set of discrete mass bins
-\begin{equation}
-[M_1,M_2),\ [M_2,M_3),\ \ldots,\ [M_{N_{\rm bin}},M_{N_{\rm bin}+1}),
+where the sum extends over all mass bin indices $a$ with $M_a \geq M_{\min}$ 
+and all radius bin indices $i$ with $\alpha_i \leq \alpha$. Deviations from 
+this relation quantify the nonlinearity of the map $S[\rho]$. To diagnose the degree of nonlinearity, we define the fractional non-additivity as:
+\begin{equation}\label{eq:non_additivity}
+    \epsilon_S(M_{\min}, \alpha) = \dfrac{F_S(M_{\min}, \alpha) -
+    \sum_{\substack{a: M_a \geq M_{\min} \\ i: \alpha_i \leq \alpha}} 
+    \Delta F_S(M_a, M_{a+1}; \alpha_i, \alpha_{i+1})}{F_S(M_{\min}, \alpha)}.
 \end{equation}
-and fix the radius factor $\alpha$ (for notational simplicity).
+Values $|\epsilon_S| \ll 1$ indicate that mass-radius bins contribute approximately 
+additively to the observable $S$, while larger values signal significant nonlinear 
+interactions between different regions of halo parameter space.
 
-For a given mass bin $[M_a,M_b)$ we define a \emph{tile--Replace} field
-\begin{equation}
-\rho_{\rm R}^{\rm bin}(\mathbf{x},z; M_a,M_b,\alpha)
-=
-\rho_{\rm D}(\mathbf{x},z)
-+
-\sum_{i \in \mathcal{H}_{[M_a,M_b)}(z)}
-\Bigl[
-\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha)
--
-\rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
-\Bigr],
-\label{eq:replace_bin}
-\end{equation}
-where $\mathcal{H}_{[M_a,M_b)}(z)$ denotes the subset of haloes with $M_i\in[M_a,M_b)$. All haloes outside the bin remain DMO at all radii.
+With the above formalism we can now explore how replacing halos from dark matter only simulations with hydro particles effects various statistics. We will approach this systematically and increasing in complexity. First we will compute the density fields of hydro, dmo and replaced for various redshifts. We will then compute 3D power spectra for each of these fields. We will perform the cumulative fractional response analysis to learn the relationship between masses, radius factors and the power spectrum and observe how this compares to the differences in the density profiles between the hydro and dmo. We will then perform replacements in mass bins at fixed radius factors to compute the differential response factor. We will use the replaced density fields to generate weak lensing maps with ray tracing. We will perform the same cumulative and differential fractional response analyses on various weak lensing statistics. Finally we will compute baryon corrections following the parameterizations of Arico, Schneider19 and Schneider25 on the illustrisTNG dark simulation. We will compare all of the statistics previously investigated with these BCM's to compare how effective these bcms are. 
 
-The corresponding observable is denoted $S_{\rm R}^{\rm bin}(M_a,M_b,\alpha)$, and we define a \emph{tile response fraction}
-\begin{equation}
-\Delta F_S^{\rm bin}(M_a,M_b,\alpha)
-\equiv
-\frac{S_{\rm R}^{\rm bin}(M_a,M_b,\alpha) - S_{\rm D}}{S_{\rm H} - S_{\rm D}}.
-\label{eq:tile_FS}
-\end{equation}
-This quantity measures the fraction of the total Hydro--DMO difference in $S$ that is sourced by haloes in the finite mass interval $[M_a,M_b)$ within the chosen radius factor $\alpha$.
+\section{Simulations and Data Generation}
 
-The mass--bin and cumulative descriptions are related. Under the approximation that contributions from different mass bins add linearly,
-\begin{equation}
-F_S(M_{\min}=M_j,\alpha)
-\approx
-\sum_{a: M_a \ge M_j}
-\Delta F_S^{\rm bin}(M_a,M_{a+1},\alpha),
-\end{equation}
-i.e.\ the cumulative response at threshold $M_j$ can be approximately recovered as the sum of tile responses from all bins above $M_j$. In the simulations we explicitly test this approximate additivity by comparing the left-- and right--hand sides for a range of thresholds and observables. Deviations quantify the nonlinearity of the mapping $S[\rho]$.
+\subsection{The IllustrisTNG Suite}
+We use the IllustrisTNG-300 simulation, though in practice this formalism could work for any simulation that contains matched initial conditions between a dmo and hydro simulation. 
 
-\paragraph{Approximate reconstruction of $F_S$ from mass bins.}
-Let the halo mass function at redshift $z$ be partitioned into disjoint bins
-\begin{equation}
-[M_1,M_2),\ [M_2,M_3),\ \ldots,\ [M_{N_{\rm bin}},M_{N_{\rm bin}+1}),
-\end{equation}
-with $M_1 = M_{\rm min,box}$ and $M_{N_{\rm bin}+1}$ exceeding the most massive halo in the simulation. Define the set of bin indices $\mathcal{A}(M_{\min})$ by
-\begin{equation}
-\mathcal{A}(M_{\min})
-=
-\left\{a \,\big|\, [M_a,M_{a+1}) \subset [M_{\min},\infty) \right\}.
-\end{equation}
-For a fixed $\alpha$, the cumulative Replace field at threshold $M_{\min}$ may be written as
-\begin{equation}
-\rho_{\rm R}(\mathbf{x},z;M_{\min},\alpha)
-=
-\rho_{\rm D}(\mathbf{x},z)
-+
-\sum_{a \in \mathcal{A}(M_{\min})}
-\sum_{i \in \mathcal{H}_{[M_a,M_{a+1})}(z)}
-\Bigl[
-\rho_{\rm H,halo}^{(i)}(\mathbf{x};\alpha) - \rho_{\rm D,halo}^{(i)}(\mathbf{x};\alpha)
-\Bigr].
-\label{eq:rhoR_bins_vs_threshold}
-\end{equation}
-In an \emph{additive response approximation} where the change in $S$ from replacing multiple mass bins is the sum of the changes induced by each bin separately, we may write
-\begin{equation}
-S_{\rm R}(M_{\min},\alpha)
--
-S_{\rm D}
-\approx
-\sum_{a \in \mathcal{A}(M_{\min})}
-\Bigl[
-S_{\rm R}^{\rm bin}(M_a,M_{a+1},\alpha) - S_{\rm D}
-\Bigr].
-\label{eq:additive_approx}
-\end{equation}
-Dividing both sides by $S_{\rm H}-S_{\rm D}$ yields
-\begin{equation}
-F_S(M_{\min},\alpha)
-\approx
-\sum_{a\in \mathcal{A}(M_{\min})}
-\Delta F_S^{\rm bin}(M_a,M_{a+1},\alpha).
-\label{eq:FS_vs_bin_sum}
-\end{equation}
-This relation is tested explicitly in the simulations. The degree to which Eq.~\eqref{eq:FS_vs_bin_sum} holds, as a function of scale and statistic $S$, quantifies how close the baryonic response is to a linear superposition of contributions from disjoint mass bins.
-\paragraph{Non--additivity diagnostic.}
-For a given threshold $M_{\min}$ and scale (e.g.\ Fourier mode $k$), we define the fractional non--additivity
-\begin{equation}
-\epsilon_S(M_{\min},\alpha;k)
-\equiv
-\frac{
-F_S^{\rm cum}(M_{\min},\alpha;k)
--
-\sum_{a \in \mathcal{A}(M_{\min})}
-\Delta F_{S}^{\rm bin}(M_a,M_{a+1},\alpha;k)
-}{
-F_S^{\rm cum}(M_{\min},\alpha;k)
-},
-\end{equation}
-where the dependence on scale $k$ is made explicit. Values $|\epsilon_S|\ll 1$ indicate that bin contributions are approximately additive for that statistic and scale, whereas large $|\epsilon_S|$ signal strong nonlinear interactions between mass ranges.
+\subsection{Halo Catalogs and Matching}
+We use the FoF/Subfind catalogs to find matched halos between the Nbody simulation and hydro simulation. For this we perform a bijective matching and set a tolerance of 0.7 
+
+\subsection{Ray-Tracing Pipeline}
+We use the same procedure as in $\kappa$TNG, utilizing the multi-plane algorithm. 
+
+\section{The Baryonic Response of the Matter Field}
+
+\subsection{3D Matter Power Spectrum}
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/suppression_and_fraction.pdf}
+    \caption{Caption}
+    \label{fig:suppression_and_fraction}
+\end{figure}
+In Fig.~\ref{fig:suppression_and_fraction}, we show the power spectrum suppression between dmo and hydro for various $M_min$ values and with a constant radius factor of $\alpha=5$. We can see clearly that none of the models perfectly match the power spectrum. In the bottom panel, we compute the cumulative fractional response for each of the mass replacements which highlights the influence of adding certain mass bins. For galaxy clusters above $10^13.5$, properly matching them out to 5$R_200$ accounts for nearly half of the power spectrum suppression. On the other hand, including galaxies betweem $10^12$ and $10^12.5$ hardly improves the fractional response, indicating, that the power spectrum information is saturated before these masses, and that the rest of the suppression is likely outside of even these lower mass halos. 
+\subsection{Cumulative Response}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/fig02_cumulative_response.pdf}
+    \caption{Caption}
+    \label{fig:cum_response}
+\end{figure}
+In Fig.~\ref{fig:cum_response}, we show the mean response of the power spectrum between scales of $k=1-30$. We show in the left pannel the effect as a function of mass, where each line is at a fixed radius factor, where on the right panel we show the inverse, which is the fractional response as a function of radius factor, colored by halo mass. 
 
 
-\subsection{Incorporating radius: cumulative versus radius bins}
-\label{subsec:radius_bins}
-
-The constructions above can be repeated for the radial dependence. For simplicity, we first fix mass and vary $\alpha$ cumulatively; we then move to discrete radius bins.
-
-\paragraph{Cumulative in radius.}
-At fixed $M_{\min}$, the Replace field in Eq.~\eqref{eq:replace_cumulative} already defines a cumulative radius dependence: inside $\alpha R_{200}$, haloes above $M_{\min}$ are replaced; outside, they remain DMO. For a given observable $S$, the cumulative response $F_S(M_{\min},\alpha)$ in Eq.~\eqref{eq:cumulative_FS} can be viewed as a function of $\alpha$ at fixed $M_{\min}$, increasing as larger radii are included.
-
-\paragraph{Discrete radius bins.}
-In practice, we work with a small set of discrete radius factors
-\begin{equation}
-\alpha_1,\ \alpha_2,\ \ldots,\ \alpha_{N_\alpha},
-\end{equation}
-for example $\alpha=\{0.5,1,2,5\}$. Rather than attempting to define a continuous derivative with respect to $\alpha$, it is more robust to treat each interval between successive factors as a finite radius bin. For a given mass bin $[M_a,M_b)$ and a pair $(\alpha_c,\alpha_d)$ with $\alpha_c < \alpha_d$, we can construct a tile--Replace field in which haloes with $M\in[M_a,M_b)$ are replaced only in the radial shell $\alpha_c R_{200} \le r < \alpha_d R_{200}$, and remain DMO elsewhere. This allows us to define a tile response
-\begin{equation}
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_c,\alpha_d)
-=
-\frac{S_{\rm R}^{\rm bin}(M_a,M_b;\alpha_c,\alpha_d) - S_{\rm D}}{S_{\rm H} - S_{\rm D}},
-\end{equation}
-which measures how much of the Hydro--DMO difference arises from that finite mass--and--radius shell.
-
-Equivalently, when only cumulative maps at a discrete set of $\alpha_i$ are available, shell contributions can be approximated by finite differences, e.g.
-\begin{equation}
-\Delta F_S^{\rm shell}(M_a,M_b;\alpha_c,\alpha_d)
-\approx
-\Delta F_S^{\rm bin}(M_a,M_b,\alpha_d)
--
-\Delta F_S^{\rm bin}(M_a,M_b,\alpha_c),
-\end{equation}
-for neighbouring $\alpha_c,\alpha_d$. In either case, the basic building block is a finite ``tile'' in $(M,\alpha)$ rather than a continuous derivative.
-\paragraph{Radius shells from cumulative radii.}
-Let $\{\alpha_1,\alpha_2,\ldots,\alpha_{N_\alpha}\}$ be an ordered set of radius factors, with $\alpha_{i+1} > \alpha_i$. For a given mass bin $[M_a,M_b)$ we denote by
-\begin{equation}
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i)
-\equiv
-\frac{S_{\rm R}^{\rm bin}(M_a,M_b;\alpha_i) - S_{\rm D}}{S_{\rm H} - S_{\rm D}}
-\end{equation}
-the response when haloes in that bin are replaced inside $r<\alpha_i R_{200}$.
-
-Assuming approximate additivity in radius (i.e.\ the response from two non--overlapping radial shells adds linearly), the contribution from the \emph{shell} between $(\alpha_i,\alpha_{i+1})$ can be estimated as the finite difference
-\begin{equation}
-\Delta F_S^{\rm shell}(M_a,M_b;\alpha_i,\alpha_{i+1})
-\approx
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_{i+1})
--
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i).
-\label{eq:shell_FS}
-\end{equation}
-This quantity measures the fraction of the total Hydro--DMO difference in $S$ that is sourced by haloes in $[M_a,M_b)$ at radii $\alpha_i R_{200} \le r < \alpha_{i+1}R_{200}$. As with Eq.~\eqref{eq:FS_vs_bin_sum}, the accuracy of Eq.~\eqref{eq:shell_FS} is tested numerically, and deviations indicate non--additive interactions between different radial layers.
+\subsection{Test of Additivity}
 
 
-\subsection{Discrete response kernel in mass--radius space}
-\label{subsec:kernel}
+\section{The Baryonic Response of Weak Lensing Observables}
+\subsection{Convergence Power Spectrum}
 
-The mass--bin and radius--bin constructions together define a \emph{discrete response kernel} for each observable $S$,
-\begin{equation}
-K_S(M_a,M_b;\alpha_i;z_k)
-\equiv
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i,z_k),
-\end{equation}
-where $[M_a,M_b)$ runs over halo mass bins, $\alpha_i$ runs over a finite set of radius factors or shells, and $z_k$ labels redshift slices. Each entry $K_S$ quantifies the fraction of the total baryonic impact on $S$ arising from haloes in that mass bin and radius layer at that redshift.
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/F_cl.pdf}
+    \caption{Caption}
+    \label{fig:placeholder}
+\end{figure}
+\subsection{PDF, Peak Counts, Minima}
+\subsection{Minkowski Functionals and Wavelets}
+\subsection{Statistic-Dependent Response}
 
-Summing the kernel over mass and radius approximately recovers the full Hydro--DMO difference:
-\begin{equation}
-\sum_{a,i}
-K_S(M_a,M_b;\alpha_i;z_k)
-\approx 1,
-\end{equation}
-provided that contributions from distinct tiles are approximately additive. Summing over either mass or radius yields marginal response profiles,
-\begin{align}
-K_S^{\rm mass}(M_a,M_b;z_k)
-&=
-\sum_i K_S(M_a,M_b;\alpha_i;z_k),\\
-K_S^{\rm radius}(\alpha_i;z_k)
-&=
-\sum_a K_S(M_a,M_b;\alpha_i;z_k),
-\end{align}
-which answer questions such as ``which halo masses dominate the baryonic effect on $S$?'' and ``which radii matter most?''
+\section{Benchmarking Baryonic Correction Models}
+\subsection{BCM Implementations}
 
-\paragraph{Approximate normalization of the kernel.}
-In the ideal limit where contributions from all mass--radius tiles add linearly and the binning covers all haloes and radii relevant for the observable, the tile responses would sum to unity,
-\begin{equation}
-\sum_{a=1}^{N_{\rm bin}}
-\sum_{i=1}^{N_\alpha}
-K_S(M_a,M_{a+1};\alpha_i;z_k)
-= 1.
-\label{eq:kernel_norm_ideal}
-\end{equation}
-\emph{Proof sketch:} by definition,
-\begin{equation}
-K_S(M_a,M_{a+1};\alpha_i;z_k)
-=
-\frac{S_{\rm R}^{\rm bin}(M_a,M_{a+1};\alpha_i;z_k) - S_{\rm D}(z_k)}{S_{\rm H}(z_k) - S_{\rm D}(z_k)}.
-\end{equation}
-If the change in $S$ from replacing all tiles simultaneously equals the sum of changes induced by each tile individually,
-\begin{equation}
-S_{\rm H}(z_k) - S_{\rm D}(z_k)
-\approx
-\sum_{a,i}
-\Bigl[
-S_{\rm R}^{\rm bin}(M_a,M_{a+1};\alpha_i;z_k) - S_{\rm D}(z_k)
-\Bigr],
-\end{equation}
-then dividing through by $S_{\rm H}-S_{\rm D}$ yields Eq.~\eqref{eq:kernel_norm_ideal}.
+\subsection{Profile Comparisons}
 
-In practice, we measure the degree of completeness and additivity via
-\begin{equation}
-\mathcal{N}_S(z_k)
-\equiv
-\sum_{a,i}
-K_S(M_a,M_{a+1};\alpha_i;z_k),
-\end{equation}
-and quote deviations of $\mathcal{N}_S$ from unity. Values of $\mathcal{N}_S$ close to one indicate that the chosen tiling in mass and radius captures most of the baryonic signal in $S$, with weak nonlinear cross--terms between tiles.
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/bcm_vs_hydro_profiles.pdf}
+    \caption{Caption}
+    \label{fig:placeholder}
+\end{figure}
 
-\paragraph{Mass and radius marginals.}
-The mass--marginal response at redshift $z_k$ is defined as
-\begin{equation}
-K_S^{\rm mass}(M_a,M_{a+1};z_k)
-\equiv
-\sum_{i=1}^{N_\alpha}
-K_S(M_a,M_{a+1};\alpha_i;z_k),
-\end{equation}
-so that
-\begin{equation}
-\sum_a
-K_S^{\rm mass}(M_a,M_{a+1};z_k)
-=
-\mathcal{N}_S(z_k).
-\end{equation}
-Similarly, the radius--marginal response is
-\begin{equation}
-K_S^{\rm radius}(\alpha_i;z_k)
-\equiv
-\sum_{a=1}^{N_{\rm bin}}
-K_S(M_a,M_{a+1};\alpha_i;z_k),
-\end{equation}
-with
-\begin{equation}
-\sum_i
-K_S^{\rm radius}(\alpha_i;z_k)
-=
-\mathcal{N}_S(z_k).
-\end{equation}
-These marginals are the discrete analogues of integrating a continuous kernel $\mathcal{R}_S(\ln M,\ln\alpha,z)$ over mass or radius.
+\subsection{Consistency Check}
+\section{Discussion}
+\subsection{Physical Interpretation}
+\subsection{Implications for Stage-IV Surveys}
+\subsection{Limitations}
+
+\section{Conclusion}
 
 
-\subsection{Cumulative and discrete vector response}
-
-So far the discussion has focused on turning a single mass bin or mass threshold ``on'' at a time. More generally, we can regard the baryonic configuration as a vector of inputs.
-
-\paragraph{Cumulative vector.}
-In the cumulative picture, we consider a set of mass thresholds $M_{\min}^{(1)},M_{\min}^{(2)},\ldots$ and, optionally, a set of radius thresholds $\alpha^{(1)},\alpha^{(2)},\ldots$. Each choice defines a component of a \emph{cumulative response vector}
-\begin{equation}
-\mathbf{F}_S
-=
-\left\{
-F_S\bigl(M_{\min}^{(p)},\alpha^{(q)}\bigr)
-\right\}_{p,q},
-\end{equation}
-which encodes how $S$ responds to including all haloes above various thresholds. This vector is useful for quick diagnostics and for comparing cumulative response patterns between different statistics.
-
-\paragraph{Discrete tile vector.}
-In the discrete binning picture, we instead define a vector of tile responses
-\begin{equation}
-\boldsymbol{\Delta F}_S
-=
-\left\{
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i;z_k)
-\right\}_{a,b,i,k},
-\end{equation}
-which is simply a flattened version of the kernel $K_S$. This vector can be treated as a set of basis coefficients describing how the baryonic perturbation is distributed over halo mass, radius, and redshift. Under approximate additivity, the total Hydro--DMO difference in $S$ can be reconstructed as a linear combination of these basis elements.
-
-\paragraph{Linear expansion in tile amplitudes.}
-Let us collect all tile responses at a given redshift into a vector
-\begin{equation}
-\boldsymbol{\Delta F}_S
-=
-\bigl(
-\Delta F_S^{\rm bin}(M_1,M_2;\alpha_1),\ldots,
-\Delta F_S^{\rm bin}(M_a,M_{a+1};\alpha_i),\ldots
-\bigr)^\top,
-\end{equation}
-and let $\mathbf{w}$ denote a vector of tile ``activation'' coefficients specifying how strongly a given physical model (e.g.\ Hydro, a BCM) perturbs each mass--radius tile relative to the DMO baseline. In the linear response regime, the total fractional change in the observable,
-\begin{equation}
-\Delta_S
-\equiv
-\frac{S - S_{\rm D}}{S_{\rm H}-S_{\rm D}},
-\end{equation}
-can be approximated as
-\begin{equation}
-\Delta_S \approx \mathbf{w}^\top \boldsymbol{\Delta F}_S.
-\label{eq:linear_tile_model}
-\end{equation}
-For the Hydro simulation itself, $\mathbf{w}$ is close to a vector of ones (all tiles ``fully'' baryonified), while for a BCM or a partially corrected analysis some components of $\mathbf{w}$ may be smaller in magnitude or even zero (tiles that are left DMO--like).
-
-The accuracy of Eq.~\eqref{eq:linear_tile_model} can be quantified by constructing synthetic configurations in which only a subset of tiles is turned on and comparing the true $\Delta_S$ from the Replace fields to the linear prediction $\mathbf{w}^\top \boldsymbol{\Delta F}_S$. This provides a direct test of the linearity and additivity assumptions underlying the tile decomposition.
 
 
-This discrete vector formalism extends naturally to models that modify baryons in multiple tiles simultaneously. For example, a baryonic correction model (BCM) with parameters $\boldsymbol{\theta}$ induces a pattern of modifications $\mathbf{w}(\boldsymbol{\theta})$ over tiles; the corresponding prediction for the baryonic effect on $S$ can then be written schematically as
-\begin{equation}
-\Delta S_{\rm BCM}
-\approx
-\sum_{a,b,i,k}
-w_{abik}(\boldsymbol{\theta})\,
-\Delta F_S^{\rm bin}(M_a,M_b;\alpha_i;z_k)\,
-\bigl(S_{\rm H} - S_{\rm D}\bigr),
-\end{equation}
-which can be compared directly to the Hydro benchmark and used to quantify response mismatches.
 
-\subsection{Summary}
 
-In summary, the response formalism is built in layers. The cumulative response $F_S(M_{\min},\alpha)$ provides an intuitive, threshold--based view of how baryons in increasingly small haloes and larger radii affect an observable. Its limitations are addressed by a discrete mass--bin and radius--bin construction, which defines a tile response $\Delta F_S^{\rm bin}$ for each finite mass--radius shell. The resulting kernel $K_S(M_a,M_b;\alpha_i;z_k)$ and its vectorized form $\boldsymbol{\Delta F}_S$ supply a compact, empirical map of where baryonic effects originate in halo space and a natural language for testing whether baryonic models reproduce the correct pattern across multiple statistics.
-
-\section{Software and third party data repository citations}
-\label{sec:cite}
-
-\begin{acknowledgments}
-\end{acknowledgments}
-
-\begin{contribution}
-All authors contributed equally to the Terra Mater collaboration.
-\end{contribution}
-
-\facilities{HST(STIS), Swift(XRT and UVOT), AAVSO, CTIO:1.3m, CTIO:1.5m, CXO}
-
-\software{
-astropy,
-Cloudy,
-Source Extractor
-}
-
-\appendix
-
-\section{Appendix information}
-
-\bibliography{sample701}{}
-\bibliographystyle{aasjournalv7}
 
 \end{document}
