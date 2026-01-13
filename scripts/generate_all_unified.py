@@ -101,7 +101,7 @@ STATS_RADII_MULT = np.array([0.5, 1.0, 2.0, 3.0, 4.0, 5.0])
 
 LENSPLANE_CONFIG = {
     'enabled': False,  # Set via --enable-lensplanes
-    'n_realizations': 10,  # N random rotation/translation realizations (LP directories)
+    'n_realizations': 20,  # N random rotation/translation realizations (LP directories)
     'planes_per_snapshot': 2,  # pps - depth slices per snapshot
     'grid_res': 4096,  # Grid resolution for lensplanes
     'seed': 2020,  # Random seed for reproducibility
@@ -129,8 +129,52 @@ MASS_BINS = [
     (10**13.5, np.inf, 'M13.5+'),
 ]
 
-# Excision radius factors
+# Excision radius factors (legacy cumulative mode)
 R_FACTORS = [0.5, 1.0, 3.0, 5.0]
+
+
+# ============================================================================
+# Binned Mode Configuration
+# ============================================================================
+# For --binned-mode: generate all pairwise combinations of mass and radius bins
+# This enables full response kernel analysis K_S(M_a, M_b; alpha_i, alpha_j; z_k)
+
+from itertools import combinations
+
+# Mass bin edges (log10 M_sun/h)
+MASS_EDGES = [12.0, 12.5, 13.0, 13.5, 15.0]
+
+# Radius bin edges (in units of R200)
+RADIUS_EDGES = [0.0, 0.5, 1.0, 3.0, 5.0]
+
+def generate_binned_configs():
+    """Generate all (mass_bin, radius_shell) combinations for binned mode.
+    
+    Returns:
+        list of (M_lo, M_hi, R_inner, R_outer) tuples
+        Total: C(5,2) × C(5,2) = 10 × 10 = 100 configurations
+    """
+    configs = []
+    
+    # All mass bin combinations (10 total)
+    mass_bins = [(10**m_lo, 10**m_hi) for m_lo, m_hi in combinations(MASS_EDGES, 2)]
+    
+    # All radius shell combinations (10 total)
+    radius_shells = list(combinations(RADIUS_EDGES, 2))
+    
+    for M_lo, M_hi in mass_bins:
+        for R_inner, R_outer in radius_shells:
+            configs.append((M_lo, M_hi, R_inner, R_outer))
+    
+    return configs
+
+def get_binned_config_label(M_lo, M_hi, R_inner, R_outer):
+    """Generate config label for binned mode.
+    
+    Format: hydro_replace_Ml_{M_lo}_Mu_{M_hi}_Ri_{R_inner}_Ro_{R_outer}
+    Example: hydro_replace_Ml_1.00e12_Mu_3.16e12_Ri_0.0_Ro_0.5
+    """
+    return f"hydro_replace_Ml_{M_lo:.2e}_Mu_{M_hi:.2e}_Ri_{R_inner}_Ro_{R_outer}".replace('+', '')
 
 
 # ============================================================================
@@ -431,6 +475,40 @@ class DistributedParticles:
         del self.coords, self.masses, self.ids, self.types, self.tree
         self.coords = self.masses = self.ids = self.types = self.tree = None
         gc.collect()
+
+    def query_shell(self, center, r_inner, r_outer):
+        """
+        Query particles in a spherical shell between r_inner and r_outer.
+        Used for binned mode where we replace particles only within a radial shell.
+        
+        Args:
+            center: (3,) halo center position
+            r_inner: inner radius of shell (0 for full sphere)
+            r_outer: outer radius of shell
+        
+        Returns:
+            Local indices of particles within the shell [r_inner, r_outer)
+        """
+        if self.tree is None or len(self.coords) == 0:
+            return np.array([], dtype=int)
+        
+        # Get particles within outer radius
+        outer_idx = set(self.query_halo(center, r_outer / self.radius_mult))
+        
+        if len(outer_idx) == 0:
+            return np.array([], dtype=int)
+        
+        # If r_inner is 0 or very small, return all particles in outer sphere
+        if r_inner <= 0:
+            return np.array(list(outer_idx), dtype=int)
+        
+        # Get particles within inner radius (to exclude)
+        inner_idx = set(self.query_halo(center, r_inner / self.radius_mult))
+        
+        # Shell = outer - inner
+        shell_idx = outer_idx - inner_idx
+        
+        return np.array(list(shell_idx), dtype=int)
 
 
 # ============================================================================
@@ -1148,10 +1226,13 @@ def generate_model_lensplanes(model_name, pos, mass, transforms, lp_grid, box_si
 
 def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hydro_particles,
                                             halos, lp_grid, box_size, output_dir, snap, comm):
-    """Generate Replace lensplanes for one (mass_bin, R_factor) configuration.
+    """Generate Replace lensplanes for one (mass_bin, radius_shell) configuration.
     
     Args:
-        config: tuple of (M_lo, M_hi, R_factor, label)
+        config: tuple of (M_lo, M_hi, R_inner, R_outer, config_label)
+            - M_lo, M_hi: mass bin boundaries (Msun/h)
+            - R_inner, R_outer: radius shell boundaries (in units of R200)
+            - config_label: string label for output directory
         transforms: TransformGenerator instance
         dmo_particles: DistributedParticles for DMO
         hydro_particles: DistributedParticles for Hydro
@@ -1163,7 +1244,7 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
         comm: MPI communicator
     """
     rank = comm.Get_rank()
-    M_lo, M_hi, R_factor, label = config
+    M_lo, M_hi, R_inner, R_outer, config_label = config
     
     # Get snapshot index in the lightcone ordering
     if snap not in SNAPSHOT_TO_INDEX:
@@ -1182,7 +1263,7 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
     n_selected = len(selected_positions)
     
     if rank == 0:
-        print(f"  Config {label}, R={R_factor}: {n_selected} halos")
+        print(f"    {n_selected} halos in mass bin")
         sys.stdout.flush()
     
     if n_selected == 0:
@@ -1191,41 +1272,46 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
         return
     
     # Query which LOCAL DMO particles are in halos (to EXCLUDE)
-    excision_radii = selected_radii * R_factor
-    local_dmo_in_halo = np.zeros(len(dmo_particles.coords), dtype=bool)
+    # For shell replacement: exclude particles in [R_inner, R_outer) shell
+    local_dmo_in_shell = np.zeros(len(dmo_particles.coords), dtype=bool)
     
-    for center, radius in zip(selected_positions, excision_radii):
-        idx = dmo_particles.query_halo(center, radius / dmo_particles.radius_mult)
+    for center, r200 in zip(selected_positions, selected_radii):
+        # Convert R_inner, R_outer from R200 units to physical units
+        r_inner_phys = r200 * R_inner
+        r_outer_phys = r200 * R_outer
+        
+        # Query shell (handles R_inner=0 case internally)
+        idx = dmo_particles.query_shell(center, r_inner_phys, r_outer_phys)
         if len(idx) > 0:
-            local_dmo_in_halo[idx] = True
+            local_dmo_in_shell[idx] = True
     
     # Query which LOCAL Hydro particles are in halos (to INCLUDE)
-    local_hydro_in_halo = np.zeros(len(hydro_particles.coords), dtype=bool)
+    local_hydro_in_shell = np.zeros(len(hydro_particles.coords), dtype=bool)
     
-    for center, radius in zip(selected_positions, excision_radii):
-        idx = hydro_particles.query_halo(center, radius / hydro_particles.radius_mult)
+    for center, r200 in zip(selected_positions, selected_radii):
+        r_inner_phys = r200 * R_inner
+        r_outer_phys = r200 * R_outer
+        
+        idx = hydro_particles.query_shell(center, r_inner_phys, r_outer_phys)
         if len(idx) > 0:
-            local_hydro_in_halo[idx] = True
+            local_hydro_in_shell[idx] = True
     
     # Build local Replace arrays
     local_pos_replace = np.concatenate([
-        dmo_particles.coords[~local_dmo_in_halo],      # DMO background
-        hydro_particles.coords[local_hydro_in_halo]    # Hydro halos
+        dmo_particles.coords[~local_dmo_in_shell],      # DMO background (not in shell)
+        hydro_particles.coords[local_hydro_in_shell]    # Hydro particles in shell
     ])
     local_mass_replace = np.concatenate([
-        dmo_particles.masses[~local_dmo_in_halo],
-        hydro_particles.masses[local_hydro_in_halo]
+        dmo_particles.masses[~local_dmo_in_shell],
+        hydro_particles.masses[local_hydro_in_shell]
     ])
     
-    n_dmo_bg = np.sum(~local_dmo_in_halo)
-    n_hydro_halo = np.sum(local_hydro_in_halo)
+    n_dmo_excl = np.sum(local_dmo_in_shell)
+    n_hydro_incl = np.sum(local_hydro_in_shell)
     
     if rank == 0:
-        print(f"    Rank 0: {n_dmo_bg:,} DMO bg + {n_hydro_halo:,} Hydro halo particles")
+        print(f"    Rank 0: {n_dmo_excl:,} DMO excluded, {n_hydro_incl:,} Hydro included")
         sys.stdout.flush()
-    
-    # Output directory for this config
-    config_label = f"hydro_replace_Ml_{M_lo:.2e}_Mu_{M_hi:.2e}_R_{R_factor}".replace('+', '')
     
     # Generate lensplanes for all realizations and pps slices
     for real_idx in range(n_realizations):
@@ -1262,7 +1348,7 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
                 del global_delta
     
     if rank == 0:
-        print(f"    Done: {n_realizations} realizations × {pps} pps slices for snap {snap}")
+        print(f"    Done: {n_realizations} realizations × {pps} pps slices")
         sys.stdout.flush()
     
     comm.Barrier()
@@ -1354,58 +1440,98 @@ def run_lensplane_generation(args, dmo_particles, hydro_particles, halos, comm):
     # ========================================================================
     # Phase 5: Replace lensplanes for each configuration
     # ========================================================================
+    
+    # Determine which configs to process based on mode
+    if getattr(args, 'binned_mode', False):
+        # Binned mode: all mass×radius shell combinations (100 configs)
+        all_configs = generate_binned_configs()
+        mode_name = "BINNED"
+    else:
+        # Legacy mode: mass bins × R factors (32 configs)
+        all_configs = []
+        for M_lo, M_hi, label in MASS_BINS:
+            for R_factor in R_FACTORS:
+                # Convert to binned format: (M_lo, M_hi, R_inner=0, R_outer=R_factor)
+                all_configs.append((M_lo, M_hi, 0.0, R_factor))
+        mode_name = "LEGACY"
+    
+    total_configs = len(all_configs)
+    
+    # Apply config range if specified (for job splitting)
+    config_start = getattr(args, 'config_start', 0)
+    config_end = getattr(args, 'config_end', None) or total_configs
+    config_end = min(config_end, total_configs)
+    
+    configs_to_process = all_configs[config_start:config_end]
+    n_configs_to_process = len(configs_to_process)
+    
     if rank == 0:
-        print("\n[Phase 5] Generating Replace lensplanes...")
-        print(f"  Mass bins: {len(MASS_BINS)}")
-        print(f"  R factors: {R_FACTORS}")
-        print(f"  Total configs: {len(MASS_BINS) * len(R_FACTORS)}")
+        print(f"\n[Phase 5] Generating Replace lensplanes ({mode_name} mode)...")
+        print(f"  Total configs available: {total_configs}")
+        print(f"  Config range: [{config_start}, {config_end})")
+        print(f"  Configs to process: {n_configs_to_process}")
         t0 = time.time()
     
-    config_count = 0
-    total_configs = len(MASS_BINS) * len(R_FACTORS)
+    processed_count = 0
+    skipped_count = 0
     
-    for M_lo, M_hi, label in MASS_BINS:
-        for R_factor in R_FACTORS:
-            config_count += 1
+    for config_idx, (M_lo, M_hi, R_inner, R_outer) in enumerate(configs_to_process):
+        global_idx = config_start + config_idx
+        
+        # Generate config label based on mode
+        if getattr(args, 'binned_mode', False):
+            config_label = get_binned_config_label(M_lo, M_hi, R_inner, R_outer)
+        else:
+            # Legacy format (R_inner is always 0 in legacy mode)
+            config_label = f"hydro_replace_Ml_{M_lo:.2e}_Mu_{M_hi:.2e}_R_{R_outer}".replace('+', '')
+        
+        # Check if this config already exists (skip-existing mode)
+        skip_existing = getattr(args, 'skip_existing', False) or getattr(args, 'incremental', False)
+        if skip_existing:
+            config_dir = os.path.join(output_dir, config_label)
             
-            # Check if this config already exists (incremental mode)
-            # Now checks ALL LPs and ALL pps slices for this snapshot
-            if args.incremental:
-                config_label = f"hydro_replace_Ml_{M_lo:.2e}_Mu_{M_hi:.2e}_R_{R_factor}".replace('+', '')
-                config_dir = os.path.join(output_dir, config_label)
-                
-                # Check all LP directories and all pps slices for this snapshot
-                pps = lp_config['planes_per_snapshot']
-                all_exist = True
-                missing_count = 0
-                for lp_idx in range(lp_config['n_realizations']):
-                    for pps_slice in range(pps):
-                        file_idx = snapshot_idx * pps + pps_slice
-                        check_file = os.path.join(config_dir, f'LP_{lp_idx:02d}', f'lenspot{file_idx:02d}.dat')
-                        if not os.path.exists(check_file):
-                            all_exist = False
-                            missing_count += 1
-                
-                if all_exist:
-                    if rank == 0:
-                        print(f"\n[{config_count}/{total_configs}] Skipping {label}, R={R_factor} (all LPs complete)")
-                    continue
-                else:
-                    if rank == 0:
-                        print(f"\n[{config_count}/{total_configs}] Processing {label}, R={R_factor} ({missing_count} missing files)...")
+            # Check all LP directories and all pps slices for this snapshot
+            pps = lp_config['planes_per_snapshot']
+            all_exist = True
+            missing_count = 0
+            for lp_idx in range(lp_config['n_realizations']):
+                for pps_slice in range(pps):
+                    file_idx = snapshot_idx * pps + pps_slice
+                    check_file = os.path.join(config_dir, f'LP_{lp_idx:02d}', f'lenspot{file_idx:02d}.dat')
+                    if not os.path.exists(check_file):
+                        all_exist = False
+                        missing_count += 1
+            
+            if all_exist:
+                if rank == 0:
+                    print(f"\n[{global_idx+1}/{total_configs}] Skipping {config_label} (all LPs complete)")
+                skipped_count += 1
+                continue
             else:
                 if rank == 0:
-                    print(f"\n[{config_count}/{total_configs}] Processing {label}, R={R_factor}...")
-            
-            config = (M_lo, M_hi, R_factor, label)
-            generate_replace_lensplanes_for_config(
-                config, transforms, dmo_particles, hydro_particles,
-                halos, lp_config['grid_res'], BOX_SIZE, output_dir, args.snap, comm
-            )
+                    print(f"\n[{global_idx+1}/{total_configs}] Processing {config_label} ({missing_count} missing files)...")
+        else:
+            if rank == 0:
+                print(f"\n[{global_idx+1}/{total_configs}] Processing {config_label}...")
+        
+        t_config = time.time()
+        
+        # Generate lensplanes for this config
+        config = (M_lo, M_hi, R_inner, R_outer, config_label)
+        generate_replace_lensplanes_for_config(
+            config, transforms, dmo_particles, hydro_particles,
+            halos, lp_config['grid_res'], BOX_SIZE, output_dir, args.snap, comm
+        )
+        
+        processed_count += 1
+        
+        if rank == 0:
+            elapsed = time.time() - t_config
+            print(f"    Config completed in {elapsed:.1f}s")
     
     if rank == 0:
         print(f"\n  Phase 5 time: {time.time()-t0:.1f}s")
-        print(f"  Total configs processed: {config_count}")
+        print(f"  Processed: {processed_count}, Skipped: {skipped_count}")
 
 
 def main():
@@ -1431,7 +1557,40 @@ def main():
     parser.add_argument('--incremental', action='store_true',
                         help='Skip configs that already exist')
     
+    # Binned mode arguments
+    parser.add_argument('--binned-mode', action='store_true',
+                        help='Use binned mass×radius shell configurations (100 configs instead of 32)')
+    parser.add_argument('--config-start', type=int, default=0,
+                        help='Start index for config range (for job splitting)')
+    parser.add_argument('--config-end', type=int, default=None,
+                        help='End index for config range (exclusive, for job splitting)')
+    parser.add_argument('--skip-existing', action='store_true',
+                        help='Skip configs that already have all output files')
+    parser.add_argument('--list-configs', action='store_true',
+                        help='Print all config names and exit (for debugging)')
+    
     args = parser.parse_args()
+    
+    # Handle --list-configs
+    if args.list_configs:
+        if args.binned_mode:
+            configs = generate_binned_configs()
+            print(f"Binned mode: {len(configs)} configurations")
+            print("=" * 70)
+            for i, (M_lo, M_hi, R_inner, R_outer) in enumerate(configs):
+                label = get_binned_config_label(M_lo, M_hi, R_inner, R_outer)
+                print(f"[{i:3d}] {label}")
+        else:
+            total = len(MASS_BINS) * len(R_FACTORS)
+            print(f"Legacy mode: {total} configurations")
+            print("=" * 70)
+            i = 0
+            for M_lo, M_hi, label in MASS_BINS:
+                for R_factor in R_FACTORS:
+                    config_label = f"hydro_replace_Ml_{M_lo:.2e}_Mu_{M_hi:.2e}_R_{R_factor}".replace('+', '')
+                    print(f"[{i:3d}] {config_label}")
+                    i += 1
+        return
     
     if args.phase5_only:
         # Phase 5 only: need to load particles and build trees

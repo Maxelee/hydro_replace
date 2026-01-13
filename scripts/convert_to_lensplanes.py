@@ -811,8 +811,8 @@ Examples:
                         help='Single realization index to convert (0-9)')
     parser.add_argument('--all-realizations', action='store_true',
                         help='Convert all realizations (0-9)')
-    parser.add_argument('--n-realizations', type=int, default=10,
-                        help='Number of realizations (default: 10)')
+    parser.add_argument('--n-realizations', type=int, default=20,
+                        help='Number of realizations (default: 20)')
     parser.add_argument('--grid', type=int, default=GRID_RES,
                         help=f'Grid resolution (default: {GRID_RES})')
     parser.add_argument('--list-models', action='store_true',
