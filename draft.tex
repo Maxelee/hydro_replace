@@ -209,9 +209,9 @@
 \section{Introduction}
 \label{sec:intro}
 
-Realizing the full scientific potential of upcoming weak gravitational lensing surveys such as Euclid, the Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST), and the Nancy Grace Roman Space Telescope requires percent-level control of systematic uncertainties, including the impact of baryonic physics on the matter power spectrum and higher-order statistics. This level of control is made difficult with baryonic feedback from stellar winds, supernova explosions, active galactic nuclei (AGN) which redistribute matter within and around dark matter halos. This redistribution has the effect of suppressing the matter power spectrum by 10--20\% at scales $k \sim 1,h,\mathrm{Mpc}^{-1}$ and altering non-Gaussian statistics such as weak lensing peak counts and the matter bispectrum. If untreated, these effects can bias cosmological parameter constraints, particularly on $S_8 = \sigma_8(\Omega_m/0.3)^{0.5}$ by amounts exceeding statistical uncertainties from Stage-IV data.
+Realizing the full scientific potential of upcoming weak gravitational lensing surveys such as Euclid, the Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST), and the Nancy Grace Roman Space Telescope requires percent-level control of systematic uncertainties, including the impact of baryonic physics on the matter power spectrum and higher-order statistics. This level of control is made difficult with baryonic feedback from stellar winds, supernova explosions, active galactic nuclei (AGN) which redistribute matter within and around dark matter halos. This redistribution has the effect of suppressing the matter power spectrum by 10--20\% at scales $k \sim 1\,h\,\mathrm{Mpc}^{-1}$ and altering non-Gaussian statistics such as weak lensing peak counts and the matter bispectrum. If untreated, these effects can bias cosmological parameter constraints, particularly on $S_8 = \sigma_8(\Omega_m/0.3)^{0.5}$ by amounts exceeding statistical uncertainties from Stage-IV data.
 
-Hydrodynamical simulations self-consistently model gas physics, star formation, and feedback providing the most accurate predictions of baryonic effects, but they remain computationally prohibitive for the large volumes and statistical ensembles required by modern surveys. A single flagship hydrodynamical run, such as IllustrisTNG or FLAMINGO, requires tens of millions of CPU hours and cannot easily be repeated across the high-dimensional parameter spaces needed for inference pipelines. 
+Hydrodynamical simulations self-consistently model gas physics, star formation, and feedback, providing the most accurate predictions of baryonic effects, but they remain computationally prohibitive for the large volumes and statistical ensembles required by modern surveys. A single flagship hydrodynamical run, such as IllustrisTNG or FLAMINGO, requires tens of millions of CPU hours and cannot easily be repeated across the high-dimensional parameter spaces needed for inference pipelines. 
 
 This computational expense has driven the development of \emph{baryonic correction models} (BCMs), which attempt to capture baryonic effects by post-processing gravity-only dark matter simulations with analytic or semi-analytic prescriptions for gas ejection, stellar fractions, and concentration modifications. These models can be calibrated to match the matter power spectrum suppression observed in hydrodynamical simulations or inferred from external observables such as Sunyaev--Zel'dovich (SZ) and X-ray data making them powerful and physically motivated alternatives to hydrodynamical simulations.
 
@@ -221,7 +221,7 @@ Recent evidence suggests the answer is no. Comparisons of BCMs against hydrodyna
 
 This raises two critical questions. First, which halo masses, radii, and redshifts dominate the baryonic impact on a given observable? Understanding this attribution is essential for determining where BCMs must be most accurate and where approximations are tolerable. Second, how can we test whether a BCM is physically self-consistent across multiple observables? Matching one statistic is insufficient if the underlying density profiles of halos differ from hydrodynamical predictions in ways that matter for other statistics. Answering these questions requires a unified framework that quantifies the response of arbitrary observables to baryonic modifications in specific regions of halo parameter space and provides a diagnostic for cross-statistic consistency.
 
-In this work, we introduce a self consistent formalism that addresses both questions as functions of mass radius and redshift. We define a family of hybrid ``Replace" density fields in which DMO halos at a redshift $z$ and above a mass threshold $M_{\min}$ are replaced by their hydrodynamical counterparts within a radial factor $\alpha R_{200}$, and construct a cumulative response function $F_S(M_{\min},\alpha)$ that measures the fraction of the total baryonic effect on observable $S$ captured by this replacement. By discretizing halo mass finite bins, we further define a tile response kernel $K_S(M_a,M_b;\alpha_i;z_k)$ that provides an empirical map of where baryonic effects originate in $(M,\alpha,z)$ space for each statistic. This kernel can be marginalized over mass or radius to answer questions such as which halo mass range contributes most to the convergence power spectrum at $\ell=1000$?'' or ``how far in radius does one need to model correctly for peak counts at signal-to-noise $\nu=4$?'' Crucially, the formalism applies to any summary statistic—matter power spectra, weak lensing two-point functions, peak counts, minima, PDFs, and higher-order moments—enabling direct comparisons of response patterns across observables.
+In this work, we introduce a self consistent formalism that addresses both questions as functions of mass, radius and redshift. We define a family of hybrid ``Replace" density fields in which DMO halos at a redshift $z$ and above a mass threshold $M_{\min}$ are replaced by their hydrodynamical counterparts within a radial factor $\alpha R_{200}$, and construct a cumulative response function $F_S(M_{\min},\alpha)$ that measures the fraction of the total baryonic effect on observable $S$ captured by this replacement. By discretizing halo mass finite bins, we further define a tile response kernel $K_S(M_a,M_b;\alpha_i;z_k)$ that provides an empirical map of where baryonic effects originate in $(M,\alpha,z)$ space for each statistic. This kernel can be marginalized over mass or radius to answer questions such as: ``which halo mass range contributes most to the convergence power spectrum at $\ell=1000$?'' or ``how far in radius does one need to model correctly for peak counts at signal-to-noise $\nu=4$?'' Crucially, the formalism applies to any summary statistic—matter power spectra, weak lensing two-point functions, peak counts, minima, PDFs, and higher-order moments—enabling direct comparisons of response patterns across observables.
 
 We apply this framework to IllustrisTNG simulations, computing response kernels for the 3D matter power spectrum, projected 2D power spectra, weak lensing convergence power, and non-Gaussian peak statistics. We then perform baryon corrections with various BCMs to assess whether BCMs place baryonic effects in the correct halo parameter space. A BCM that matches $K_S^{\mathrm{Hydro}}$ for multiple statistics is physically consistent. 
 
@@ -231,14 +231,14 @@ This paper is organized as follows. In Section~\ref{sec:formalism}, we develop t
 
 \section{A Response Formalism}
 \label{sec:formalism}
-We begin with a general treatment of the response for some field level statistic to baryons. In general we can define a density field as 
+We begin with a general treatment of the response for some field level statistic to baryons. In general we can define a Replace density field as 
 \begin{equation}\label{eq:general_replace_density}
     \rho_{R}(\bm{x}, z) = \rho_D(\bm{x}, z)  + \sum_{i \in H} \left[\rho_H^i(\bm{x}, z) - \rho_{D}^i(\bm{x}, z)\right]
 \end{equation}
-where $\rho_D(\bm{x}, z)$ is the density in a dark matter only simulation at coordinat $\bm{x}$ and redshift $z$. Given some set of coordinates described by $H$, the dark matter density at that location, $\rho_D^i$ can be modified via a replacement with the hydro density, $\rho_H^i$. In the above, the framework is general such that $H$ can signify any chosen coordinates, but for this work, we will choose $H$ to be a set of halos with masses $M$ and radius factors $\alpha R_{200}$. To avoid double-counting where halo regions overlap, we assign priority by decreasing halo mass. For a given location $\bm{x}$, if multiple halos' replacement regions contain $\bm{x}$, only the most massive halo performs the replacement at that location. 
+where $\rho_D(\bm{x}, z)$ is the density in a dark matter only simulation at coordinate $\bm{x}$ and redshift $z$. Given some set of coordinates described by $H$, the dark matter density at that location, $\rho_D^i$ can be modified via a replacement with the hydro density, $\rho_H^i$. In the above, the framework is general such that $H$ can signify any chosen coordinates, but for this work, we will choose $H$ to be a set of halos with masses $M$ and radius factors $\alpha R_{200}$. To avoid double-counting where halo regions overlap, we assign priority by decreasing halo mass. For a given location $\bm{x}$, if multiple halos' replacement regions contain $\bm{x}$, only the most massive halo performs the replacement at that location. 
 Mathematically, we define:
 
-\begin{equation}
+\begin{equation}\label{eq:replace}
 \rho_R(\bm{x},z) = \rho_D(\bm{x},z) + \sum_{i \in H(M,z)} \theta_i(\bm{x}) 
 \left[\rho_H^i(\bm{x},\alpha) - \rho_D^i(\bm{x},\alpha)\right],
 \end{equation}
@@ -253,40 +253,19 @@ where the indicator function is
 \end{equation}
 This ensures that each spatial point receives replacement from at most one halo.
 
-To make the intuition clearer, we will rewrite Eq.~\ref{eq:general_replace_density} as 
-\begin{equation}\label{eq:Mass_alpha_z_replace_density}
-    \rho_{R}(\bm{x}, z) = \rho_D(\bm{x}, z)  + \sum_{i \in H(M, z)} \left[\rho_H^i(\bm{x}, \alpha) - \rho_{D}^i(\bm{x}, \alpha)\right],
-\end{equation}
-to make clear that we iterate over some set of halos with masses $M$ and at redshift $z$, and for each, we replace within regions of $\alpha R_200$. 
-
-As an example, consider the case $M_{\min} = 10^{13}\,M_\odot h^{-1}$ and $\alpha_0=1$. 
-For each halo $i$ satisfying these criteria, we define extraction regions:
-\begin{equation}
-\rho_{D}^{i}(\bm{x};\alpha=1) =
-\begin{cases}
-\rho_{D}(\bm{x}) & \text{if } |\bm{x}-\bm{x}_i| < R_{200}^{i} \text{ AND } M^i \geq 10^{13}\,M_\odot h^{-1},\\
-0 & \text{otherwise},
-\end{cases}
-\end{equation}
-
-\begin{equation}
-\rho_{H}^{i}(\bm{x};\alpha=1) =
-\begin{cases}
-\rho_{H}(\bm{x}) & \text{if } |\bm{x}-\bm{x}_i| < R_{200}^{i} \text{ AND } M^i \geq 10^{13}\,M_\odot h^{-1},\\
-0 & \text{otherwise}.
-\end{cases}
-\end{equation}
 
 In the limit of $M_{\rm min}$ goes to 0 or $\alpha$ becomes $\infty$, the field becomes purely hydro, and inversely, the field becomes purely dark matter only. It can then be thought of that $\rho_R$ interpolates between the DMO and hydro fields as the mass threshold and radius factor are modified. 
 
-For any statistic that we measure from the resulting replace field ($S_R$), we can assume that its value is somewhere between the dark matter only ($S_D$) and hydro versions ($S_H$) of the same statistic allowing us to define some response fraction, 
+For any statistic that we measure from the resulting Replace field ($S_R$), we can assume that its value is somewhere between the dark matter only ($S_D$) and hydro versions ($S_H$) of the same statistic, allowing us to define some response fraction, 
 \begin{equation}\label{eq:cum_resp_func}
     F_S(M_{\rm min}, \alpha) = \dfrac{S_R(M_{\rm min}, \alpha) - S_D}{S_H-S_D}.
 \end{equation}
-For a fixed $\alpha$ and redshift $z$, we can see that the fraction approaches $0$ as the minimum mass approaches infinity, and 1 as it approaches 0. Or intuitively, when no mass is replaced, the fraction is 0 reflecting that the statistic extracted from the replace field is the same as in a dark matter only simulation, while when all masses are included, the field and resulting statistic is purely hydro. 
+For a fixed $\alpha$ and redshift $z$, we can see that the fraction approaches $0$ as the minimum mass $M_{\rm min}$ approaches infinity, and 1 as it approaches 0. Or intuitively, when no mass is replaced, the fraction is 0, reflecting that the statistic extracted from the replace field is the same as in a dark matter only simulation, while when all masses are included, the field and resulting statistic is purely hydro. 
+
+The fraction, $F_s$ is implicitly a function of a chosen statistics arguments. For example, the matter power spectrum, $P(k)$ can be computed for hydro, DMO and replace fields yielding a quantity, $F_P(M_{min}, \alpha; k)$, and which shows what masses and radius factors contribute to a given scale. It is often the case that the hydro and dmo statisticss are relativly consistent, for example at large scales in the matter power spectrum. In such a case, the fraction becomes undefined, and we must artificially fix the fraction to some constant, $F_p = c$, which we will set to 1. It should also be noted that the fraction is not necessarily bounded between $0$ and $1$. The replacement does not necessarily follow mass conservation laws, and can therefore create a statistic, $S_R$ which is no longer some smoothly interpolated location between the dmo and hydro statistic. 
 
 
-The above definitions using $M_{\rm min}$ are inherently cumulative as they incorporate all halos above some threshold mass, and replacement regions in spheres according to $\alpha$. The response fraction then tells us for a given statistic, how low, and how far out do we need to go to capture the full baryonic effects on the given statistic. For example, peak counts, which are sensitive to the collapsed cores of massive halos may show that one must only match density profiles of massive $10^{13}$ and above halos out to $0.5 \times R200$, while the power spectrum may require more. We will show in \S\ref{sec:} various statistics and how much BCMs must do to approach them. 
+The above definitions using $M_{\rm min}$ are inherently cumulative as they incorporate all halos above some threshold mass, and replacement regions in spheres according to $\alpha$. The response fraction then tells us for a given statistic, how low, and how far out do we need to go to capture the full baryonic effects on the given statistic. For example, peak counts, which are sensitive to the collapsed cores of massive halos, may show that one must only match density profiles of massive $10^{13}$ and above halos out to $0.5 \times R200$, while the power spectrum may require more. We will show in \S\ref{sec:} various statistics and how much BCMs must do to approach them. 
 
 In the discrete version, we partition halo masses and radii into finite bins 
 and define the response from a specific mass-radius tile. For a mass bin 
@@ -317,53 +296,224 @@ Values $|\epsilon_S| \ll 1$ indicate that mass-radius bins contribute approximat
 additively to the observable $S$, while larger values signal significant nonlinear 
 interactions between different regions of halo parameter space.
 
-With the above formalism we can now explore how replacing halos from dark matter only simulations with hydro particles effects various statistics. We will approach this systematically and increasing in complexity. First we will compute the density fields of hydro, dmo and replaced for various redshifts. We will then compute 3D power spectra for each of these fields. We will perform the cumulative fractional response analysis to learn the relationship between masses, radius factors and the power spectrum and observe how this compares to the differences in the density profiles between the hydro and dmo. We will then perform replacements in mass bins at fixed radius factors to compute the differential response factor. We will use the replaced density fields to generate weak lensing maps with ray tracing. We will perform the same cumulative and differential fractional response analyses on various weak lensing statistics. Finally we will compute baryon corrections following the parameterizations of Arico, Schneider19 and Schneider25 on the illustrisTNG dark simulation. We will compare all of the statistics previously investigated with these BCM's to compare how effective these bcms are. 
 
-\section{Simulations and Data Generation}
+\section{Simulations and Model Creation}
 
 \subsection{The IllustrisTNG Suite}
-We use the IllustrisTNG-300 simulation, though in practice this formalism could work for any simulation that contains matched initial conditions between a dmo and hydro simulation. 
+
+We use the highest resolution version of the IllustrisTNG suite, specifically the TNG300-1 simulation alongside its dark matter only counterpart TNG300-1-Dark (henceforth TNG and TNG-DM, respectively) \citep{}. The TNG300-1 simulation spans a periodic volume with $205\,{\rm Mpc}\,h^{-1}$ on a side and evolves $2500^3$ dark matter, and $2500^3$ gas elements which can become stars and black holes from redshift $z=127$ to $z=0$.
+
+In practice, the formalism of \S~\ref{sec:formalism} can be applied to any simulation suite containing matched initial conditions between hydrodynamical and dark matter only counterparts. We choose IllustrisTNG for this work to build upon and extend previous results \citep{miller2025} examining baryonic effects through halo replacement procedures, and previous weak lensing statistic studies such as \cite{}. Understanding the impact of different subgrid physics implementations on the response kernels derived in \S~\ref{sec:formalism} would be valuable, but we leave systematic comparison across simulation suites (e.g., FLAMINGO \citep{}, SIMBA \citep{}, EAGLE \citep{}) for future work.
+
+Both TNG and TNG-DM adopt cosmological parameters consistent with Planck 2015 results: $\Omega_{\Lambda,0}=0.6911$, $\Omega_{m,0}=0.3089$, $\Omega_{b,0}=0.0486$, $\sigma_8=0.8159$, $n_s=0.9667$, and $h=0.6774$ \citep{}. The TNG simulation includes baryonic physics through a subgrid prescription which includes radiative cooling, star formation, stellar evolution and feedback, supermassive black hole seeding and growth, and AGN feedback \citep{}. The model was calibrated to reproduce the galaxy stellar mass function, stellar-to-halo mass relation, and cosmic star formation rate density at $z\lesssim 10$.
+
+The mass resolution of TNG300-1 is $m_{\rm gas}=7.44\times 10^6\,M_\odot\,h^{-1}$ for initial gas cells and $m_{\rm DM}=3.98\times 10^7\,M_\odot\,h^{-1}$ for dark matter particles. The TNG-DM counterpart uses $m_{\rm DM}=4.72\times 10^7\,M_\odot\,h^{-1}$, accounting for the cosmic baryon fraction. Both simulations output particle data at 100 snapshots spanning $0 \leq z \leq 20$, with all data publicly available through the IllustrisTNG data release \citep{}.
 
 \subsection{Halo Catalogs and Matching}
-We use the FoF/Subfind catalogs to find matched halos between the Nbody simulation and hydro simulation. For this we perform a bijective matching and set a tolerance of 0.7 
 
-\subsection{Ray-Tracing Pipeline}
-We use the same procedure as in $\kappa$TNG, utilizing the multi-plane algorithm. 
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/all_models.pdf}
+    \caption{Grid showing all Replace models constructed in this work. Each tile represents a specific mass-radius bin configuration, with color indicating the volume filling fraction of the replacement region within the TNG300-1 box at $z=0$. The upper-left corner shows exclusive (single bin) models, while the lower-right shows fully cumulative models. Off-diagonal tiles represent mixed configurations (e.g., cumulative in mass, exclusive in radius). The most extensive replacement—halos with $M>10^{12}\,h^{-1}M_\odot$ out to $5R_{200}$—occupies approximately 5\% of the total volume and is in the lower right corner.}
+    \label{fig:models}
+\end{figure}
+ 
+Both TNG and TNG-DM employ the Friends-of-Friends (FoF) algorithm with linking length $b=0.2$ to identify dark matter halos, followed by the SUBFIND algorithm \citep{} to locate gravitationally bound substructures within each FoF group. These catalogs are computed on-the-fly during the simulation and output at each snapshot, with particle membership indexed to enable rapid halo-to-particle association.
+
+We construct catalogs of bijectively matched halos between TNG-DM and TNG using a particle-based matching procedure. For each halo in TNG-DM, we identify all associated dark matter particles and determine their halo membership in TNG, selecting the TNG halo containing the largest fraction of these particles as the match. We then reverse the process: starting from the matched TNG halo, we verify that it maps back to the original TNG-DM halo. We retain only halo pairs for which $>70\%$ of particles successfully return to the original halo in this bidirectional matching, ensuring robust correspondence. This procedure effectively filters out halos that exist exclusively in one simulation or the other due to differences in baryonic physics affecting structure formation. 
+
+For all subsequent references to halos in this manuscript, we refer to this catalog of bijectively matched halos rather than the full FoF/SUBFIND catalogs. At $z=0$, this matched catalog contains approximately $1.2\times 10^6$ halos with $M_{200} > 10^{12}\,h^{-1}M_\odot$. We define $R_{200}$ as the radius enclosing a mean density 200 times the critical density $\rho_{\rm crit}(z)$ of the universe at that redshift, and $M_{200}$ as the total mass (dark matter plus baryons) enclosed within that radius. To avoid ambiguity where halo regions overlap, we adopt a mass-based priority rule: when multiple halos' replacement regions contain the same spatial location, only the most massive halo performs the replacement at that point. This ensures each particle position in the simulation volume is replaced at most once, preventing double-counting of baryonic effects.
+
+\subsection{Replace Field Construction}
+
+With the formalism outlined in \S~\ref{sec:formalism} and the matched halo catalogs described above, we construct a suite of Replace density fields by selectively replacing TNG-DM halo particles with their TNG counterparts. We partition the halo mass function into bins with edges $M_i = [10^{12}, 10^{12.5}, 10^{13}, 10^{13.5}, 10^{15})\,h^{-1}\,M_\odot$, and radius space into shells with factors $\alpha_i = [0, 0.5, 1.0, 3.0, 5.0]R_{200}$. This yields a 4$\times$4 grid in mass-radius space, plus cumulative configurations, for a total of approximately 100 distinct Replace field variants.
+
+We distinguish between \emph{exclusive} models, which replace halos only within a single mass-radius tile (e.g., $10^{13} < M < 10^{13.5}\,h^{-1}M_\odot$ and $0.5 < \alpha < 1.0$), and \emph{cumulative} models, which include all halos above a mass threshold and within a cumulative radius factor (e.g., $M > 10^{12}\,h^{-1}M_\odot$ and $\alpha < 3.0$). Mixed configurations—cumulative in mass but exclusive in radius, or vice versa—allow us to isolate the contributions from specific radial shells across the full mass range, or from specific mass bins across all radii.
+
+In Figure~\ref{fig:models}, we show a grid representing each Replace field model. The upper left corner represents exclusive models, while the lower right corner shows purely exclusive models. The offdiagonal elements show combinations of cumulative mass/radius bins with exclusive radius/mass bin combinations. The color of each tile indicates the volume filling fraction of the replacement region within the TNG300-1 box at $z=0$. This was simply computed with the radii from the halo catalogs to compute and sum spherical volumes, with respect to the total box volume. If anything, this volume filling fraction is a slight over estimate as it does not account for overlaps between halos, but as the halos make up a minority of the volume, this correction is likely small. We only use the volume filling fraction so the reader can get a rough sense of the amount of replacement that takes place, and therefore a small overestimate of the volume filling fraction is acceptable. The most cumulative configuration, replacing halos with $M>10^{12}\,h^{-1}M_\odot$ out to $5R_{200}$, modifies approximately 5\% of the total simulation volume. Lower-mass halos and smaller radii naturally occupy smaller volume fractions, with the exclusive bin models each affecting $\lesssim 0.1\%$ of the volume.
+
+%Mass conservation... We do NOT enforce this, and instead study the raw effects of this replacement. how should we talk about this, why motivate it like this?
+
+\subsection{Ray-Tracing Pipeline}\label{sec:raytracing}
+
+We employ a multi-lens-plane ray-tracing approach to generate weak lensing convergence and shear maps from the Replace density fields, following the methodology of \citet{}. We briefly summarize the key steps here and refer the reader to these works for full implementation details.
+
+Light rays are traced backwards from an observer at $z=0$ to a source redshift $z_s$. To construct light cones spanning comoving distances up to $\sim 4000\,h^{-1}{\rm Mpc}$ (corresponding to $z_s \approx 2.5$), we stack TNG300-1 snapshots along the line of sight at fixed intervals equal to the box size, $205\,h^{-1}{\rm Mpc}$. This requires 20 snapshots in total. Following \citet{}, we select the TNG snapshots closest to the centres of these 20 equally-spaced comoving distance intervals. The specific snapshot numbers, redshifts, and comoving distances are listed in Table~1 of \citet{}.
+
+Each snapshot is then split into two planes spaced at regular intervals of half the TNG300-1 comoving box size, $\Delta \chi = 102.5\,h^{-1}{\rm Mpc}$. At each plane, we project the 3D density field $\rho(\bm{x},z)$ onto a 2D surface density $\Sigma(\bm{\theta},\chi)$ by integrating along the line of sight over the plane thickness:
+\begin{equation}
+\Sigma(\bm{\theta}, \chi_i) = \int_{\chi_i - \Delta\chi/2}^{\chi_i + \Delta\chi/2} \rho(\chi \bm{\theta}, \chi)\, d\chi,
+\end{equation}
+where $\bm{\theta}$ is the angular position on the sky and $\chi$ is comoving distance. Following $\kappa$TNG, we perform ray tracing in a $5\times 5\deg^2$ light cone. The last 10 snapshots ($z \gtrsim 0.8$) are replicated 4 times in the transverse direction to achieve the desired angular coverage at high redshift \citep{}.
+
+The deflection angle $\bm{\alpha}$ accumulated by a light ray passing through lens plane $i$ is computed from the 2D gravitational potential via
+\begin{equation}
+\bm{\alpha}_i(\bm{\theta}) = \frac{2}{c^2} \int \nabla_{\perp} \Phi(\bm{\theta}', \chi_i) \frac{d^2\theta'}{|\bm{\theta} - \bm{\theta}'|},
+\end{equation}
+where $\Phi$ is related to $\Sigma$ through the 2D Poisson equation. In practice, we solve this in Fourier space using Fast Fourier Transforms (FFT) on a $4096^2$ grid spanning the light cone opening angle of $5\times 5\deg^2$. Dark matter, gas, and stellar particles (or, for Replace fields, the hybrid density distribution) are assigned to the grid using a triangular-shaped cloud (TSC) scheme \citep{}.
+
+The convergence $\kappa$ and shear $\gamma$ fields are derived from second derivatives of the lensing potential accumulated across all lens planes:
+\begin{equation}
+\kappa(\bm{\theta}) = \frac{1}{2} (\partial_1 \partial_1 + \partial_2 \partial_2)\psi(\bm{\theta}), \quad
+\gamma_1(\bm{\theta)} = \frac{1}{2}(\partial_1\partial_1 - \partial_2\partial_2)\psi(\bm{\theta}), \quad
+\gamma_2 = \partial_1\partial_2 \psi(\bm{\theta}),
+\end{equation}
+where $\psi(\bm{\theta})$ is the effective lensing potential summed over planes weighted by the geometric lensing efficiency $g(\chi_s, \chi_i)$. The final convergence and shear maps are output on a $1024^2$ pixel grid with pixel size $0.29\,{\rm arcmin}$, matching the resolution used in the public $\kappa$TNG  suite.
+
+To suppress sample variance, we generate multiple pseudo-independent realizations of each model-- Replace, hydro and dmo -- by exploiting the periodic boundary conditions and the fact that the light cone does not cover the entire simulation box. For each model, we (1) randomly translate all particles by a random offset along each of the three axes, (2) rotate the snapshot by 0, 90, 180, or 270 degrees around each axis, and (3) apply a random flip along any axis. This procedure is applied 20 times to each simulation snapshot, allowing for the generation of 20 sets of unique lensplanes. The ray tracing procedure then translates and rotates a set of lensplanes randomly again allowing for the generation of 100 convergence maps per lensplane set. All together, we end up with 2,000 convergence maps for each of the 100 Replace models as well as for TNG and TNG-DM. It is important to note that these convergence maps are pseudo-independant, meaning that they are random realizations of convergence maps, but were constructed from a simulation with the same initial conditions. 
+
+
+% \subsection{Full procedure}
+% The full procedure for data generation is then as follows. 
+% \begin{enumerate}
+%     \item For each snapshot 
+% \end{enumerate}
 
 \section{The Baryonic Response of the Matter Field}
+\label{sec:results_matter}
 
-\subsection{3D Matter Power Spectrum}
+We begin our analysis with the matter power spectrum. Our approach replicates the halo replacement analysis of \citet{} and extends it across a systematic grid of mass bins, radial shells, and redshifts. We describe all results within the response formalism developed in \S~\ref{sec:formalism}, which provides a unified description of how different regions of halo parameter space contribute to baryonic effects. We first present cumulative models—replacing all halos above a mass threshold out to a fixed radius—to build intuition for the scale-dependent response. We then turn to exclusive models, which isolate individual mass-radius tiles, and quantify the degree of non-additivity following Eq.~\eqref{eq:non_additivity}.
+
+\subsection{Matter Power Spectrum: Cumulative Models}
+%
 \begin{figure}
     \centering
-    \includegraphics[width=\linewidth]{imgs/suppression_and_fraction.pdf}
-    \caption{Caption}
+    \includegraphics[width=\linewidth]{imgs/scale_dependent_response.pdf}
+    \caption{Power spectrum suppression and cumulative response fractions at $z=0$. \textbf{Top panel:} Ratio $P_{\rm R}(k)/P_{\rm D}(k)$ for 16 cumulative Replace models (lower right corner of Fig.~\ref{fig:models}) compared to the full hydrodynamical suppression $P_{\rm H}(k)/P_{\rm D}(k)$ (black). Each column represents a different mass threshold $M_{\min}$, with colors indicating radius factors $\alpha$. Even the most aggressive replacement ($M_{\min}=10^{12}\,h^{-1}M_\odot$, $\alpha=5$, red line) does not fully reproduce the Hydro suppression. \textbf{Bottom panels:} Cumulative response fractions $F_P(M_{\min}, \alpha; k)$. Again, the columns represent different mass thresholds, while colors represent radius factors. Values outside the range $[0,1]$ indicate that the Replace model overshoots or undershoots the DMO-Hydro interval, indicating mass conservation violations, which can be seen in the top panels as over predictions on large and intermediate scales. We limit computations of the response fraction to regions in $k$-space where the full hydrodynamical power spectrum suppression exceeds $1\%$, and is below the Nyquist frequency of the grid.}
     \label{fig:suppression_and_fraction}
 \end{figure}
-In Fig.~\ref{fig:suppression_and_fraction}, we show the power spectrum suppression between dmo and hydro for various $M_min$ values and with a constant radius factor of $\alpha=5$. We can see clearly that none of the models perfectly match the power spectrum. In the bottom panel, we compute the cumulative fractional response for each of the mass replacements which highlights the influence of adding certain mass bins. For galaxy clusters above $10^13.5$, properly matching them out to 5$R_200$ accounts for nearly half of the power spectrum suppression. On the other hand, including galaxies betweem $10^12$ and $10^12.5$ hardly improves the fractional response, indicating, that the power spectrum information is saturated before these masses, and that the rest of the suppression is likely outside of even these lower mass halos. 
-\subsection{Cumulative Response}
+%
+For each Replace model shown in Fig.~\ref{fig:models}, we apply the replacement procedure of Eq.~\eqref{eq:replace_bin} to the 20 TNG300-1 snapshots spanning redshifts $0.03 \leq z \leq 2.44$ (Table~1 of \citealt{}). At each snapshot, particles are assigned to a $4096^2$ pixel grid using triangle-shaped cloud (TSC) interpolation. We compute the overdensity field for each model $i$ and redshift $z$ as
+%
+\begin{equation}
+\delta_i(\bm{x}, z) = \frac{\rho_i(\bm{x}, z) - \bar{\rho}_i(z)}{\bar{\rho}_i(z)},
+\end{equation}
+%
+where $\bar{\rho}_i(z)$ is the mean density of model $i$ at redshift $z$. The matter power spectrum is then computed via
+%
+\begin{equation}
+P_i(k, z) = \langle |\tilde{\delta}_i(\bm{k}, z)|^2 \rangle,
+\end{equation}
+%
+where $\tilde{\delta}_i$ is the Fourier transform of $\delta_i$ and angle brackets denote averaging over Fourier modes.
+
+We now apply the response formalism of \S~\ref{sec:formalism}, replacing the generic statistic subscript $S$ with $P$ for the "power spectrum". We begin with cumulative models represented by the $16$ tiles in the lower right corner of Fig.~\ref{fig:models}, and for which all halos with mass $M > M_{\min}$ are replaced within $r < \alpha R_{200}$. To avoid numerical instabilities when the denominator in Eq.~\eqref{eq:cum_resp_func} approaches zero, we compute response fractions $F_P(M_{\min}, \alpha; k, z)$ only at $k$ where baryonic suppression exceeds 1\%: $|P_{\rm H}(k,z) - P_{\rm D}(k,z)|/P_{\rm D}(k,z) > 0.01$. Additionally, all power spectra are evaluated up to the Nyquist frequency of the density grid, $k_{\rm max} = \pi N / L = 62.7\,h\,{\rm Mpc}^{-1}$ with $N=4096$ pixels.
+
+Figure~\ref{fig:suppression_and_fraction} shows the power spectrum suppression and cumulative response fractions at $z=0$ for the 16 cumulative models spanning our mass-radius grid. In the top panel, the black curve shows the full hydrodynamical suppression $P_{\rm H}(k)/P_{\rm D}(k)$. Each column shows the ratio  $P_{\rm R}(k)/P_{\rm D}(k)$ for Replace models with varying $M_{\min}$ and colors represent the different radius factors $\alpha$. The bottom panel shows the response fractions in the same format, with panels representing $M_{\rm min}$and colors showing the different $\alpha$ factors. 
+
+There are various interesting aspects of this plot. First, even the most aggressive replacement — all halos with $M > 10^{12}\,h^{-1}M_\odot$ out to $5R_{200}$ captures only $\sim 90\%$ of the total hydrodynamical suppression at $1\,h\,{\rm Mpc}^{-1}\lesssim k \lesssim 50 \,h\,{\rm Mpc}^{-1}$, consistent with the findings of \citet{}. This shortfall implies that a non-negligible fraction of the baryonic signal originates from halos below our mass resolution limit, radii beyond $5R_{200}$, or the intergalactic medium not associated with halos. Second, models with small radius factors ($\alpha = 0.5$ or $1$) systematically \emph{enhance} power on large scales ($k < 1\,h\,{\rm Mpc}^{-1}$) relative to DMO, causing $P_{\rm R}/P_{\rm D} > 1$. This counterintuitive behavior arises from mass conservation violations and has been explored in \cite{}: replacing only halo cores with their lower-mass hydrodynamical counterparts removes mass from high-density peaks without compensating in the outskirts, artificially boosting large-scale power. This artifact disappears when $\alpha \geq 3$, indicating that the masss conservation between hydrodynamical and dark matter only simulations exists outside of the virial radius of halos. This has also been studied extensively in \cite{}
+
+The bottom panels of Fig.~\ref{fig:suppression_and_fraction} show the cumulative response fraction $F_P(M_{\min}, \alpha; k)$ from Eq.~\eqref{eq:cum_resp_func},, where each column again represents mass bins, and the colors show the various $\alpha$ factors. By construction, $F_P = 0$ indicates the Replace model is indistinguishable from dark matter only, while $F_P = 1$ implies it fully reproduces the Hydrodynamical suppression. Values outside $[0,1]$ indicate artifacts of violating mass conservation, clearly visible in the $\alpha=0.5$ and $\alpha=1$ panels, where $F_P < 0$. 
+
+The panels also qualitatively reveal the relative importance of mass bins. Galaxy clusters with $M > 10^{13}\,h^{-1}M_\odot$ replaced out to $5R_{200}$ alone account for $F_P \sim 0.75$—seventy five percent of the total baryonic suppression—across $1\,h\,{\rm Mpc}^{-1} \lesssim k \lesssim 10\,h\,{\rm Mpc}^{-1}$. Including lower-mass groups down to $M_{\min} = 10^{12.5}\,h^{-1}M_\odot$ increases this to $F_P \sim 0.9$ at $k\lesssim 10\,h\,{\rm Mpc}^{-1}$. Extending the mass threshold from $10^{12.5}$ to $10^{12}\,h^{-1}M_\odot$ yields an improvement at smaller scales enhancing $F_P$ to $\sim0.9$ at nearly all applicable scales. 
 
 \begin{figure}
     \centering
-    \includegraphics[width=\linewidth]{imgs/fig02_cumulative_response.pdf}
-    \caption{Caption}
+    \includegraphics[width=\linewidth]{imgs/cumulative_response_summary.pdf}
+    \caption{Mean cumulative response fractions $\langle F_P \rangle_k$ averaged over the $k$ range used and presented for the $F_P factor in Fig.~\ref{fig:suppression_and_fraction}$. \textbf{Left panel:} Mean response as a function of mass threshold $M_{\min}$ for fixed radius factors $\alpha$. At fixed $\alpha$, lowering $M_{\min}$ increases $\langle F_P \rangle_k$ . \textbf{Right panel:} Mean response as a function of $\alpha$ for fixed $M_{\min}$. \textbf{Bottom panel:} Heat map showing $\langle F_P \rangle_k$ across the full $(M_{\min}, \alpha)$ grid at $z=0$. To reproduce the power spectrum to within $\sim 10\%$ accuracy ($\langle F_P \rangle_k \sim 0.9$), one must correctly model all halos above $10^{12}\,h^{-1}M_\odot$ out to $5R_{200}$. Intermediate targets (e.g., $\langle F_P \rangle_k \sim 0.5$) can be achieved by focusing on massive halos ($M > 10^{13}\,h^{-1}M_\odot$) within $3R_{200}$.}
     \label{fig:cum_response}
 \end{figure}
-In Fig.~\ref{fig:cum_response}, we show the mean response of the power spectrum between scales of $k=1-30$. We show in the left pannel the effect as a function of mass, where each line is at a fixed radius factor, where on the right panel we show the inverse, which is the fractional response as a function of radius factor, colored by halo mass. 
+
+To distill the scale-dependent information in Fig.~\ref{fig:suppression_and_fraction} into a single metric per model, we compute the $k$-averaged fractional response $\langle F_P(M_{\min}, \alpha; z) \rangle_k $
+where the sum extends over all $k$-bins between $k_{\min}(z)$—the minimum wavenumber at which the Hydro-DMO difference exceeds 1\% at redshift $z$—and the Nyquist frequency $k_{\rm max} = 62.7\,h\,{\rm Mpc}^{-1}$. We are then left with a single number summarizing the "overall effectiveness" of a given $(M_{\min}, \alpha)$ configuration in capturing the baryonic effects on the power spectrum.
+
+Figure~\ref{fig:cum_response} presents $\langle F_P \rangle_k$ at $z=0$. The left panel shows $\langle F_P \rangle_k$ as a function of $M_{\min}$ for fixed $\alpha$. At fixed radius factor, lowering the mass threshold increases the fractional response, as expected, including more halos captures more of the baryonic signal. However, the rate of improvement slows below $M_{\min} = 10^{13}\,h^{-1}M_\odot$, particularly for small $\alpha$. For example, at $\alpha = 1$, reducing $M_{\min}$ from $10^{13}$ to $10^{12}\,h^{-1}M_\odot$ increases $\langle F_P \rangle_k$ by only $\Delta F_P \sim 0.1$, which is roughly the same as just better reproducing the density distribution out to $\alpha=3$ for $10^{13}\,h^{-1}\,M_\odot$ halos. The right panel shows the complementary view: $\langle F_P \rangle_k$ as a function of $\alpha$ for fixed $M_{\min}$. 
+
+The bottom panel of Fig.~\ref{fig:cum_response} displays $\langle F_P \rangle_k$ as a heat map over the full $(M_{\min}, \alpha)$ parameter space. This visualization provides a quick reference for model requirements. To achieve $\sim 10\%$ fidelity ($\langle F_P \rangle_k \gtrsim 0.9$, dark red), one must correctly reconstruct the density distribution of \emph{all} halos above $10^{12}\,h^{-1}M_\odot$ out to at least $5R_{200}$. More modest goals, such as capturing 60\% of the effect ($\langle F_P \rangle_k \sim 0.6$,), can be met by focusing on massive halos ($M > 10^{13}\,h^{-1}M_\odot$) within $\sim 3R_{200}$. This quantitative guidance directly informs the calibration and validation strategies for baryonic feedback prescriptions in cosmological analyses.
+
+\subsection{Redshift Evolution of the Power Spectrum Response}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/redshift_evolution.pdf}
+    \caption{Redshift evolution of the mean cumulative response fraction $\langle F_P(M_{\min}, \alpha; z) \rangle_k$ spanning $0.03 \leq z \leq 2.44$. Each panel corresponds to a mass threshold, $M_{\rm min}$  with curves colored by radius threshold, $\alpha$.  At small radii ($\alpha=0.5, 1$), the response for low-mass halos ($M_{\min} \leq 10^{12.5}\,h^{-1}M_\odot$) increases to $z\sim1$ and then declines steeply beyond $z \sim 1$, consistent with the stellar and black hole evolution. At cosmic noon, we expect star formation to peak, with the largest amount of matter redistribution inside of halo cores, and AGN feedback to become more important as black holes grow towards $z\sim0$. At large radii ($\alpha=3, 5$), the response is more redshift-independent, though again, there is a clear decline after $z\sim 1$.  The highest-mass bin ($M_{\min} = 10^{13.5}\,h^{-1}M_\odot$) shows declining response at nearly all redshifts due to the increasing scarcity of such massive systems at higher redshifts. }
+    \label{fig:power_spectrum_z_evolution}
+\end{figure}
+
+For observables that probe the matter distribution across cosmic time such as weak gravitational lensing, understanding the redshift dependence of baryonic effects is crucial. Figure~\ref{fig:power_spectrum_z_evolution} shows the evolution of $\langle F_P(M_{\min}, \alpha; z) \rangle_k$ from $z=2.44$ to $z=0.03$ for all 16 cumulative models. As with Fig.~\ref{fig:suppression_and_fraction}, each panel shows an $M_{\rm min}$ threshold and the colored lines represent different $\alpha$ values. 
+
+The right mosst panel shows massive galaxy groups/clusters and evolution of their importance to the matter power spectrum suppression. It is noteable that at high $z$, these halos contribute virtually nothing to the power spectrum suppression, likely due to the decreased number counts of such massive systems at early time. Also interesting is that as cosmic time proceeds, the exteriors of halos (out to $\alpha=5$ become more important, highlighting the evolution of AGN feedback in massive systems, redistributing matter far outside of the halos. 
+
+This trend is also clear in the lower mass regimes, where the response factor becomes gradually more dependant on the exteriors of halos with decreasing redshift, though at $z\gtrsim1.5$, the matter redistribution due to baryons appears to occur only inside of $\alpha=1$, or a single $R_{200}$. At roughly the same redshift, the centers of lower mass halos $M<10^{13}\,h^{-1}\,M_\odot$ become become exponentially more important to $z\sim 1$, this likely corresponds to cosmic noon and the peak of star formation efficiency. For lower mass sysstems where stellar feedback is important, the fractional response shows that the centers of halos, become quite important. This then slowly decreases in importance as we approach $z=0$ while star formation decreases. 
+
+Similarly, the information about the power spectrum suppression inside of the virial radius becomes less important at $z\lesssim1.5$, as stellar and AGN feedback increase, and redistribute matter efficiently outside of the virial radius. It is interesting that the information content is the same within $R_{200}$ as it is within $0.5R_{200}$ at $z=0$.
 
 
-\subsection{Test of Additivity}
+\subsection{Discrete Mass-Radius Tiles and Non-Additivity}
+
 
 
 \section{The Baryonic Response of Weak Lensing Observables}
-\subsection{Convergence Power Spectrum}
+The previous section demonstrated the response of the matter power spectrum to baryonic effects, replicating and extending the halo replacement analysis of \citet{} using the response formalism of \S~\ref{sec:formalism}. This allowed a systematic quantification of baryonic importance across halo mass, radius, and redshift. We now apply the same framework to weak gravitational lensing statistics, demonstrating that the response formalism provides a unified description across observables enabling informed modeling choices for cosmological analyses.
+
+Following the $\kappa$TNG ray-tracing procedure described in \S~\ref{sec:raytracing}, we generate 2,000 pseudo-independent convergence maps for each of the $\sim 100$ Replace models shown in Fig.~\ref{fig:models}. Each map covers a $5\deg \times 5\deg$ field of view at pixel resolution $0.29\,{\rm arcmin}$ (corresponding to $1024^2$ pixels) and source redshifts spanning $z_s = 0.034$ to $z_s = 2.57$ using the 40 lens plane redshifts listed in Table~1 of \citet{}. This yields a total of $\sim 8$ million convergence, $\kappa$, and shear, $\gamma$, maps across all models and source redshifts. We make this dataset publicly available for community use and exploration.\footnote{Data release details and access instructions are available at ...}
+
+\subsection{Angular Power Spectrum}
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/C_ell_scale_dependent_response_z1.pdf}
+    \caption{The same as Fig.~\ref{fig:suppression_and_fraction}, but for the angular power spectrum at $z\sim1$ following following Eq.~\ref{eq:C_l} in the top rows, and Eq.~\ref{eq:F_cl} in the bottom. Similar to Fig.~\ref{fig:suppression_and_fraction}, we find that the models fail at intermediate to large scales likely due to mass conservation issues which can be seen as suppression in the angular power spectrum, and enhancements in the $F_{C_\ell}$ at these scales. The lower right panel shows that capturing halos out to $10^{12}$ and above out to $\alpha=5$ almost fully captures all of the baryonic effects important to the angular power spectrum.}
+    \label{fig:C_ell_scale_dependent_response_z1}
+\end{figure}
 
 \begin{figure}
     \centering
-    \includegraphics[width=\linewidth]{imgs/F_cl.pdf}
+    \includegraphics[width=\linewidth]{imgs/C_ell_cumulative_summary_z1.pdf}
+    \caption{Mean cumulative response fractions $\langle F_{C_\ell} \rangle_\ell$ for the convergence power spectrum at source redshift $z_s \approx 1.0$, averaged over multipoles where $|C_\ell^{\rm H} - C_\ell^{\rm DMO}|/C_\ell^{\rm DMO} > 0.01$. Layout follows Fig.~\ref{fig:cum_response}. Unlike the matter power spectrum (Fig.~\ref{fig:cum_response}), the convergence power spectrum saturates more quickly with radius: extending from $R_{200}$ to $3R_{200}$ provides most of the gain, with diminishing returns beyond. Replacing halos with $M > 10^{12}\,h^{-1}M_\odot$ out to $R_{200}$ (i.e., $\alpha=1$) already captures $\sim 85\%$ of the baryonic effect on $C_\ell$ at $z_s \sim 1$. This is a less stringent requirement than for the matter power spectrum (Fig.~\ref{fig:cum_response}), suggesting that lensing-weighted projections smooth over some of the small-scale structure sensitive to baryonic modifications beyond $R_{200}$.}
+    \label{fig:C_ell_cumulative_summary_z1}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/C_ell_redshift_evolution.pdf}
+    \caption{Redshift evolution of the mean cumulative response fraction $\langle F_{C_\ell}(M_{\min}, \alpha; z_s) \rangle_\ell$ for the angular power spectrum across source redshifts $0.03 \leq z_s \leq 2.57$. Layout follows Fig.~\ref{fig:power_spectrum_z_evolution}. The convergence power spectrum response exhibits weaker redshift dependence than the matter power spectrum (Fig.~\ref{fig:power_spectrum_z_evolution}), remaining relatively flat across $0.2 \lesssim z_s \lesssim 2$ for most models. This reflects the fact that lensing integrates contributions along the line of sight, averaging over the redshift-dependent baryonic effects that were evident in the snapshot-by-snapshot matter power spectra. At fixed mass threshold, extending replacement to $\alpha = 3$ or $5$ (bottom two panels) yields consistently high response ($\langle F_{C_\ell} \rangle_\ell \sim 0.8$--$0.9$) across all source redshifts, whereas $\alpha = 0.5$ or $1$ models show declining response at high $z_s$ where lensing efficiency peaks at intermediate lens redshifts ($z_{\rm lens} \sim 0.5$--$1$). These results demonstrate that accurately modeling baryonic effects on weak lensing requires capturing halo modifications out to at least $3R_{200}$ across the full redshift range upto $z=2$.}
+    \label{fig:C_ell_redshift_evolution}
+\end{figure}
+We begin with the Gaussian statistics of the weak lensing field: the convergence angular power spectrum. For each convergence map, we compute
+\begin{equation}\label{eq:C_l}
+    C_{\kappa}(\ell_i) = \langle|\tilde{\kappa}(\bm{\ell})|^2\rangle_{\bm{\ell} \in [\ell_i^{\rm min}, \ell_i^{\rm max}]},
+\end{equation}
+where $\tilde{\kappa}(\bm{\ell})$ is the two-dimensional Fourier transform of the convergence field $\kappa(\bm{\theta})$, and the angle brackets denote averaging over all Fourier modes $\bm{\ell}$ within the multipole bin $[\ell_i^{\rm min}, \ell_i^{\rm max}]$. This yields angular power spectra for each of the 2,000 pseudo-independent maps across all Replace models and source redshifts. We compute the same quantities for the non-Replace models (i.e., pure TNG-Hydro and TNG-DMO), allowing us to define the cumulative response fraction for the convergence power spectrum following Eq.~\ref{eq:cum_resp_func}:
+\begin{equation}\label{eq:F_cl}
+    F_{C_\ell}(M_{\min}, \alpha; \ell, z_s) = \frac{\langle C_\ell^{\rm R}(M_{\min}, \alpha; z_s) \rangle - \langle C_\ell^{\rm DMO}(z_s) \rangle}{\langle C_\ell^{\rm H}(z_s) \rangle - \langle C_\ell^{\rm DMO}(z_s) \rangle},
+\end{equation}
+where the outer angle brackets denote averaging over the 2,000 map realizations. As in \S~\ref{sec:results_matter}, we begin by presenting results for the 16 cumulative models in the lower-right corner of Fig.~\ref{fig:models}, followed by additivity and non-linearity from exclusive models.
+
+Figure~\ref{fig:C_ell_scale_dependent_response_z1} shows the convergence power spectrum suppression (top panel) and cumulative response fractions (bottom panels) at source redshift $z_s \approx 1.0$, a choice representative of weak lensing surveys such as DES Y3 and KiDS-1000. The black curve in the top panel shows the full hydrodynamical suppression $C_\ell^{\rm H}/C_\ell^{\rm DMO}$.
+
+Similar to the matter power spectrum (Fig.~\ref{fig:suppression_and_fraction}), the most aggressive replacement—all halos with $M > 10^{12}\,h^{-1}M_\odot$ out to $5R_{200}$ (thick red line)—nearly fully reproduces the hydrodynamical suppression across all multipoles, achieving $F_{C_\ell} \gtrsim 0.95$ at $\ell \gtrsim 1000$. This indicates that baryonic modifications to the convergence power spectrum at $z_s \sim 1$ are dominated by processes occurring within identified halos above our mass threshold, with minimal contribution from the IGM or low-mass halos. 
+
+Models with small radius factors ($\alpha = 0.5$ or $1$, dashed and dotted lines) show suppression at large scales ($\ell \lesssim 500$), causing $C_\ell^{\rm R}/C_\ell^{\rm DMO} < 1$ and pushing $F_{C_\ell}$ above 1. This mass conservation artifact is qualitatively inverse to that seen in the matter power spectrum, but appears at lower $\ell$ (larger angular scales)... \textbf{But why is it flipped?}.
+
+
+Figure~\ref{fig:C_ell_cumulative_summary_z1} condenses this scale-dependent information into the multipole-averaged response fraction $\langle F_{C_\ell} \rangle_\ell$, computed analogously to $\langle F_P \rangle_k$ in \S~\ref{sec:results_matter}. We average over all multipoles where $|C_\ell^{\rm H} - C_\ell^{\rm DMO}|/C_\ell^{\rm DMO} > 0.01$. The left panel shows that lowering the mass threshold from $10^{13}$ to $10^{12}\,h^{-1}M_\odot$ at fixed $\alpha = 1$ increases $\langle F_{C_\ell} \rangle_\ell$ from $\sim 0.5$ to $\sim 0.8$—a dramatic gain indicating that low mass halos cannot be ignored in their importance to the angular power spectrum. The right panel shows that extending the radius from $R_{200}$ to $3R_{200}$ yields only modest improvement. This is a key difference from the matter power spectrum (Fig.~\ref{fig:cum_response}), where extending to $5R_{200}$ provided more significant gains.
+
+The bottom heat map reveals that replacing halos with $M > 10^{12}\,h^{-1}M_\odot$ out to just $R_{200}$ (i.e., $\alpha = 1$) already captures $\langle F_{C_\ell} \rangle_\ell \sim 0.85$—approximately 85\% of the baryonic effect on the convergence power spectrum at $z_s \sim 1$. To achieve $\langle F_{C_\ell} \rangle_\ell \gtrsim 0.9$, one must extend to at least $3R_{200}$ for halos above $10^{12}\,h^{-1}M_\odot$. This is a less stringent requirement than for the matter power spectrum, which required $5R_{200}$ to approach 90\% (Fig.~\ref{fig:cum_response}). The difference arises because the lensing kernel integrates the density field along the line of sight and across a range of redshifts, effectively smoothing over some of the small-scale radial structure that dominates the matter power spectrum at high $k$.
+
+Finally, figure~\ref{fig:C_ell_redshift_evolution} extends this analysis across source redshifts from $z_s = 0.03$ to $z_s = 2.57$. The layout mirrors Fig.~\ref{fig:power_spectrum_z_evolution}, with each panel showing $\langle F_{C_\ell} \rangle_\ell$ as a function of source redshift for fixed $\alpha$ and varying $M_{\min}$.
+
+The convergence power spectrum response shows much weaker redshift dependence than what we saw in the matter power spectrum. For models with $\alpha \geq 3$, the response remains relatively flat at $\langle F_{C_\ell} \rangle_\ell$. Again, we believe this reflects the fact that lensing integrates contributions along the line of sight, averaging over the redshift-dependent baryonic effects that were starkly evident in the snapshot-by-snapshot matter power spectra (Fig.~\ref{fig:power_spectrum_z_evolution}). 
+
+Unlike the matter power spectrum, the convergence power spectrum response does not show a clear signature of low-mass halos "turning off" their feedback at high redshift. This is again due to projection effects: even though individual low-mass halos at $z \sim 2$ may exhibit weak feedback (as seen in Fig.~\ref{fig:power_spectrum_z_evolution}), the lensing signal for high-$z_s$ sources is dominated by more evolved halos at intermediate lens redshifts where feedback is active.
+
+These results demonstrate that accurately modeling baryonic effects on the weak lensing convergence power spectrum for Stage-III and Stage-IV surveys requires capturing halos down to at least $M \sim 10^{12}\,h^{-1}M_\odot$—group-scale systems that dominate the lensing-weighted baryonic signal and extending halo modifications to at least $3R_{200}$, and preferably $5R_{200}$ for percent-level accuracy at high multipoles. These quantitative constraints provide direct guidance for calibrating baryonic correction models (BCMs) and for interpreting cosmological parameter constraints from upcoming weak lensing surveys.
+
+\subsection{PDF, Peak Counts, Minima}
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/fig_kappa_pdf_response.png}
     \caption{Caption}
     \label{fig:placeholder}
 \end{figure}
-\subsection{PDF, Peak Counts, Minima}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{imgs/fig_kappa_pdf_response.png}
+    \caption{Caption}
+    \label{fig:placeholder}
+\end{figure}
+
+
 \subsection{Minkowski Functionals and Wavelets}
 \subsection{Statistic-Dependent Response}
 

@@ -43,7 +43,6 @@ try:
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
-    print('using MPI')
 except ImportError:
     HAS_MPI = False
     rank = 0
@@ -525,7 +524,7 @@ def convert_realization_parallel(input_dir, output_dir, model, realization, grid
             print(f"  Input:  {in_real_dir}")
             print(f"  Output: {out_real_dir}")
     
-    # Synchronize before processing
+    # Small synchronization to ensure output dir exists before any rank tries to write
     if HAS_MPI:
         comm.Barrier()
     
@@ -539,7 +538,7 @@ def convert_realization_parallel(input_dir, output_dir, model, realization, grid
     my_planes = [p for p in range(N_PLANES) if p % size == rank]
     
     if verbose and len(my_planes) > 0:
-        print(f"  [Rank {rank}] Processing {len(my_planes)} planes: {my_planes[0]}-{my_planes[-1]}")
+        print(f"  [Rank {rank}/{size-1}] Processing {len(my_planes)} plane(s): {my_planes}")
     
     # Convert each assigned plane
     n_converted_local = 0
@@ -557,7 +556,7 @@ def convert_realization_parallel(input_dir, output_dir, model, realization, grid
         if convert_plane(input_path, output_path, plane_idx, Lt, thickness, grid_res, verbose=False):
             n_converted_local += 1
     
-    # Synchronize and gather counts
+    # Synchronize after all planes are converted (before rank 0 writes config.dat)
     if HAS_MPI:
         comm.Barrier()
         n_converted_total = comm.reduce(n_converted_local, op=MPI.SUM, root=0)
@@ -829,12 +828,9 @@ Examples:
     args = parser.parse_args()
     verbose = not args.quiet
     
-    # Only rank 0 should print header and handle non-conversion tasks
-    if rank == 0 and verbose and HAS_MPI:
-        print(f"\n{'='*60}")
-        print(f"MPI-enabled convert_to_lenspot.py")
-        print(f"Running with {size} MPI rank(s)")
-        print(f"{'='*60}")
+    # Debug: Print MPI status on all ranks
+    if verbose:
+        print(f"[DEBUG] Rank {rank}/{size}: HAS_MPI={HAS_MPI}")
     
     # Verification mode (single rank only)
     if args.verify:

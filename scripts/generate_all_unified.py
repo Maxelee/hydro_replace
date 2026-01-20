@@ -351,12 +351,13 @@ def write_lensplane(filepath, delta, grid_res):
 class DistributedParticles:
     """Load and manage particles distributed across MPI ranks."""
     
-    def __init__(self, snapshot, sim_res, mode, radius_mult=5.0):
+    def __init__(self, snapshot, sim_res, mode, radius_mult=5.0, lensplane_only=False):
         self.snapshot = snapshot
         self.sim_res = sim_res
         self.mode = mode
         self.radius_mult = radius_mult
         self.sim_config = SIM_PATHS[sim_res]
+        self.lensplane_only = lensplane_only  # Skip IDs/types to save ~9GB/rank
         
         self.coords = None
         self.masses = None
@@ -396,8 +397,11 @@ class DistributedParticles:
                     
                     n_part = f[pt_key]['Coordinates'].shape[0]
                     coords_list.append(f[pt_key]['Coordinates'][:].astype(np.float32) / 1e3)
-                    ids_list.append(f[pt_key]['ParticleIDs'][:])
-                    types_list.append(np.full(n_part, ptype, dtype=np.int8))
+                    
+                    # Skip IDs and types for lensplane-only mode (saves ~9 GB/rank)
+                    if not self.lensplane_only:
+                        ids_list.append(f[pt_key]['ParticleIDs'][:])
+                        types_list.append(np.full(n_part, ptype, dtype=np.int8))
                     
                     if 'Masses' in f[pt_key]:
                         masses_list.append(f[pt_key]['Masses'][:].astype(np.float32) * MASS_UNIT)
@@ -407,13 +411,17 @@ class DistributedParticles:
         if coords_list:
             self.coords = np.concatenate(coords_list)
             self.masses = np.concatenate(masses_list)
-            self.ids = np.concatenate(ids_list)
-            self.types = np.concatenate(types_list)
+            if not self.lensplane_only:
+                self.ids = np.concatenate(ids_list)
+                self.types = np.concatenate(types_list)
+            else:
+                self.ids = None
+                self.types = None
         else:
             self.coords = np.zeros((0, 3), dtype=np.float32)
             self.masses = np.zeros(0, dtype=np.float32)
-            self.ids = np.zeros(0, dtype=np.int64)
-            self.types = np.zeros(0, dtype=np.int8)
+            self.ids = None if self.lensplane_only else np.zeros(0, dtype=np.int64)
+            self.types = None if self.lensplane_only else np.zeros(0, dtype=np.int8)
         
         if rank == 0:
             print(f"    Rank 0: {len(self.coords):,} particles")
@@ -479,7 +487,7 @@ class DistributedParticles:
     def query_shell(self, center, r_inner, r_outer):
         """
         Query particles in a spherical shell between r_inner and r_outer.
-        Used for binned mode where we replace particles only within a radial shell.
+        Uses two KDTree queries (outer and inner) then computes shell = outer - inner.
         
         Args:
             center: (3,) halo center position
@@ -509,6 +517,101 @@ class DistributedParticles:
         shell_idx = outer_idx - inner_idx
         
         return np.array(list(shell_idx), dtype=int)
+
+
+# ============================================================================
+# Halo Mask Precomputation (for fast multi-config lensplane generation)
+# ============================================================================
+
+def precompute_halo_particle_data(particles, halos, max_radius_mult, comm):
+    """Precompute particle indices and normalized distances for all halos.
+    
+    This queries KDTree ONCE per halo at max radius, then stores particle
+    indices and their distances (in units of R200). Any shell mask can then
+    be computed with fast numpy operations instead of KDTree queries.
+    
+    With 28k halos, this does 28k KDTree queries (vs 140k for 5 radii).
+    
+    Args:
+        particles: DistributedParticles instance with KDTree built
+        halos: dict with 'masses', 'positions', 'radii'
+        max_radius_mult: maximum radius in units of R200 (e.g., 5.0)
+        comm: MPI communicator
+    
+    Returns:
+        list of tuples, one per halo: [(particle_indices, distances_in_r200), ...]
+        distances are in units of R200 for that halo
+    """
+    r = comm.Get_rank()
+    n_halos = len(halos['masses'])
+    
+    if r == 0:
+        print(f"    Querying {n_halos} halos at {max_radius_mult}×R200 (single query per halo)...")
+        t0 = time.time()
+    
+    halo_data = []
+    
+    for i in range(n_halos):
+        center = halos['positions'][i]
+        r200 = halos['radii'][i]
+        
+        # Single KDTree query at max radius
+        r_max = r200 * max_radius_mult
+        idx = particles.query_halo(center, r_max)
+        
+        if len(idx) == 0:
+            halo_data.append((np.array([], dtype=np.int64), np.array([], dtype=np.float32)))
+            continue
+        
+        # Compute distances in units of R200
+        coords = particles.coords[idx]
+        dx = coords - center
+        # Handle periodic BC
+        dx = np.where(dx > BOX_SIZE/2, dx - BOX_SIZE, dx)
+        dx = np.where(dx < -BOX_SIZE/2, dx + BOX_SIZE, dx)
+        dist_r200 = np.linalg.norm(dx, axis=1) / r200
+        
+        halo_data.append((np.array(idx, dtype=np.int64), dist_r200.astype(np.float32)))
+        
+        # Progress for rank 0
+        if r == 0 and (i + 1) % 5000 == 0:
+            elapsed = time.time() - t0
+            rate = (i + 1) / elapsed
+            eta = (n_halos - i - 1) / rate
+            print(f"      {i+1}/{n_halos} halos ({rate:.1f}/s, ETA {eta:.0f}s)")
+    
+    if r == 0:
+        print(f"    Precomputation done: {time.time()-t0:.1f}s")
+    
+    return halo_data
+
+
+def get_particles_in_shell_fast(halo_data, halo_indices, r_inner, r_outer):
+    """Get combined particle indices for halos in a mass bin within a radial shell.
+    
+    Uses precomputed particle data with distance filtering (no KDTree queries).
+    
+    Args:
+        halo_data: list of (indices, distances) from precompute_halo_particle_data
+        halo_indices: array of halo indices in the mass bin
+        r_inner: inner radius in units of R200
+        r_outer: outer radius in units of R200
+    
+    Returns:
+        numpy array of local particle indices in the shell
+    """
+    all_particles = []
+    for i in halo_indices:
+        idx, dist = halo_data[i]
+        if len(idx) == 0:
+            continue
+        # Fast numpy filtering by distance
+        shell_mask = (dist >= r_inner) & (dist < r_outer)
+        all_particles.append(idx[shell_mask])
+    
+    if all_particles:
+        return np.unique(np.concatenate(all_particles))
+    return np.array([], dtype=np.int64)
 
 
 # ============================================================================
@@ -1225,7 +1328,8 @@ def generate_model_lensplanes(model_name, pos, mass, transforms, lp_grid, box_si
 
 
 def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hydro_particles,
-                                            halos, lp_grid, box_size, output_dir, snap, comm):
+                                            halos, lp_grid, box_size, output_dir, snap, comm,
+                                            dmo_halo_data=None, hydro_halo_data=None):
     """Generate Replace lensplanes for one (mass_bin, radius_shell) configuration.
     
     Args:
@@ -1242,6 +1346,8 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
         output_dir: base output directory for lensplanes (WITHOUT snap subdirectory)
         snap: snapshot number
         comm: MPI communicator
+        dmo_halo_data: precomputed (indices, distances) from precompute_halo_particle_data
+        hydro_halo_data: precomputed (indices, distances) from precompute_halo_particle_data
     """
     rank = comm.Get_rank()
     M_lo, M_hi, R_inner, R_outer, config_label = config
@@ -1258,9 +1364,8 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
     
     # Select halos in mass bin
     halo_mask = (halos['masses'] >= M_lo) & (halos['masses'] < M_hi)
-    selected_positions = halos['positions'][halo_mask]
-    selected_radii = halos['radii'][halo_mask]
-    n_selected = len(selected_positions)
+    halo_indices = np.where(halo_mask)[0]
+    n_selected = len(halo_indices)
     
     if rank == 0:
         print(f"    {n_selected} halos in mass bin")
@@ -1271,30 +1376,39 @@ def generate_replace_lensplanes_for_config(config, transforms, dmo_particles, hy
             print(f"    No halos in this bin, skipping")
         return
     
-    # Query which LOCAL DMO particles are in halos (to EXCLUDE)
-    # For shell replacement: exclude particles in [R_inner, R_outer) shell
+    # Get particles in shell using precomputed data (fast) or KDTree queries (slow fallback)
     local_dmo_in_shell = np.zeros(len(dmo_particles.coords), dtype=bool)
-    
-    for center, r200 in zip(selected_positions, selected_radii):
-        # Convert R_inner, R_outer from R200 units to physical units
-        r_inner_phys = r200 * R_inner
-        r_outer_phys = r200 * R_outer
-        
-        # Query shell (handles R_inner=0 case internally)
-        idx = dmo_particles.query_shell(center, r_inner_phys, r_outer_phys)
-        if len(idx) > 0:
-            local_dmo_in_shell[idx] = True
-    
-    # Query which LOCAL Hydro particles are in halos (to INCLUDE)
     local_hydro_in_shell = np.zeros(len(hydro_particles.coords), dtype=bool)
     
-    for center, r200 in zip(selected_positions, selected_radii):
-        r_inner_phys = r200 * R_inner
-        r_outer_phys = r200 * R_outer
+    if dmo_halo_data is not None and hydro_halo_data is not None:
+        # Fast path: use precomputed particle data with distance filtering
+        dmo_idx = get_particles_in_shell_fast(dmo_halo_data, halo_indices, R_inner, R_outer)
+        if len(dmo_idx) > 0:
+            local_dmo_in_shell[dmo_idx] = True
         
-        idx = hydro_particles.query_shell(center, r_inner_phys, r_outer_phys)
-        if len(idx) > 0:
-            local_hydro_in_shell[idx] = True
+        hydro_idx = get_particles_in_shell_fast(hydro_halo_data, halo_indices, R_inner, R_outer)
+        if len(hydro_idx) > 0:
+            local_hydro_in_shell[hydro_idx] = True
+    else:
+        # Slow fallback: query KDTree per halo (used when data not precomputed)
+        selected_positions = halos['positions'][halo_indices]
+        selected_radii = halos['radii'][halo_indices]
+        
+        for center, r200 in zip(selected_positions, selected_radii):
+            r_inner_phys = r200 * R_inner
+            r_outer_phys = r200 * R_outer
+            
+            idx = dmo_particles.query_shell(center, r_inner_phys, r_outer_phys)
+            if len(idx) > 0:
+                local_dmo_in_shell[idx] = True
+        
+        for center, r200 in zip(selected_positions, selected_radii):
+            r_inner_phys = r200 * R_inner
+            r_outer_phys = r200 * R_outer
+            
+            idx = hydro_particles.query_shell(center, r_inner_phys, r_outer_phys)
+            if len(idx) > 0:
+                local_hydro_in_shell[idx] = True
     
     # Build local Replace arrays
     local_pos_replace = np.concatenate([
@@ -1441,11 +1555,19 @@ def run_lensplane_generation(args, dmo_particles, hydro_particles, halos, comm):
     # Phase 5: Replace lensplanes for each configuration
     # ========================================================================
     
+    # Skip Phase 5 if --phase4-only is set
+    if getattr(args, 'phase4_only', False):
+        if rank == 0:
+            print("\n[Phase 5] Skipped (--phase4-only mode)")
+        return
+    
     # Determine which configs to process based on mode
     if getattr(args, 'binned_mode', False):
         # Binned mode: all mass×radius shell combinations (100 configs)
         all_configs = generate_binned_configs()
         mode_name = "BINNED"
+        # Get unique radius edges for precomputation
+        radius_edges = sorted(set(RADIUS_EDGES))
     else:
         # Legacy mode: mass bins × R factors (32 configs)
         all_configs = []
@@ -1454,6 +1576,8 @@ def run_lensplane_generation(args, dmo_particles, hydro_particles, halos, comm):
                 # Convert to binned format: (M_lo, M_hi, R_inner=0, R_outer=R_factor)
                 all_configs.append((M_lo, M_hi, 0.0, R_factor))
         mode_name = "LEGACY"
+        # Get unique radius edges for precomputation
+        radius_edges = sorted(set([0.0] + R_FACTORS))
     
     total_configs = len(all_configs)
     
@@ -1471,6 +1595,13 @@ def run_lensplane_generation(args, dmo_particles, hydro_particles, halos, comm):
         print(f"  Config range: [{config_start}, {config_end})")
         print(f"  Configs to process: {n_configs_to_process}")
         t0 = time.time()
+    
+    # No precomputation - use per-config queries with optimized query_shell
+    # (precomputation caused OOM due to storing particle data for all halos)
+    dmo_halo_data = None
+    hydro_halo_data = None
+    
+    comm.Barrier()
     
     processed_count = 0
     skipped_count = 0
@@ -1516,11 +1647,12 @@ def run_lensplane_generation(args, dmo_particles, hydro_particles, halos, comm):
         
         t_config = time.time()
         
-        # Generate lensplanes for this config
+        # Generate lensplanes for this config (using precomputed data for fast shell masks)
         config = (M_lo, M_hi, R_inner, R_outer, config_label)
         generate_replace_lensplanes_for_config(
             config, transforms, dmo_particles, hydro_particles,
-            halos, lp_config['grid_res'], BOX_SIZE, output_dir, args.snap, comm
+            halos, lp_config['grid_res'], BOX_SIZE, output_dir, args.snap, comm,
+            dmo_halo_data=dmo_halo_data, hydro_halo_data=hydro_halo_data
         )
         
         processed_count += 1
@@ -1554,6 +1686,8 @@ def main():
                         help='Grid resolution for lensplanes')
     parser.add_argument('--phase5-only', action='store_true',
                         help='Skip Phases 1-4, only run Phase 5 (Replace lensplanes)')
+    parser.add_argument('--phase4-only', action='store_true',
+                        help='Only run Phase 4 (DMO & Hydro lensplanes), skip Phase 5')
     parser.add_argument('--incremental', action='store_true',
                         help='Skip configs that already exist')
     
@@ -1595,8 +1729,83 @@ def main():
     if args.phase5_only:
         # Phase 5 only: need to load particles and build trees
         run_phase5_only(args)
+    elif args.phase4_only:
+        # Phase 4 only: DMO & Hydro lensplanes without profiles
+        run_phase4_only(args)
     else:
         run_unified_pipeline(args)
+
+
+def run_phase4_only(args):
+    """Run only Phase 4 (DMO & Hydro lensplanes) without profiles/stats.
+    
+    This is an optimized path for regenerating DMO/Hydro lensplanes
+    without recomputing profiles or loading IDs/types.
+    """
+    t_start = time.time()
+    
+    if rank == 0:
+        print("=" * 70)
+        print("PHASE 4 ONLY MODE (DMO & Hydro Lensplanes)")
+        print("=" * 70)
+        print(f"Snapshot: {args.snap}")
+        print(f"Resolution: L205n{args.sim_res}TNG")
+        print("=" * 70)
+        sys.stdout.flush()
+    
+    # Output paths
+    output_dir_base = os.path.join(OUTPUT_BASE, f'L205n{args.sim_res}TNG')
+    output_dir = os.path.join(OUTPUT_BASE, f'L205n{args.sim_res}TNG')
+    
+    # Load particles (lensplane_only=True since we don't need IDs/types)
+    if rank == 0:
+        print("\n[1/2] Loading particles...")
+    
+    dmo = DistributedParticles(args.snap, args.sim_res, 'dmo', args.radius_mult, lensplane_only=True)
+    dmo.load()  # No need for KDTree for Phase 4
+    
+    hydro = DistributedParticles(args.snap, args.sim_res, 'hydro', args.radius_mult, lensplane_only=True)
+    hydro.load()  # No need for KDTree for Phase 4
+    
+    # Get lensplane config
+    lp_config = LENSPLANE_CONFIG.copy()
+    if args.lensplane_grid:
+        lp_config['grid_res'] = args.lensplane_grid
+    
+    transforms = TransformGenerator(
+        seed=lp_config['seed'],
+        n_realizations=lp_config['n_realizations'],
+        pps=lp_config['planes_per_snapshot']
+    )
+    
+    if rank == 0:
+        print(f"\n[2/2] Generating DMO & Hydro lensplanes...")
+        print(f"  Transforms: {lp_config['n_realizations']} realizations × {lp_config['planes_per_snapshot']} pps")
+        print(f"  Grid: {lp_config['grid_res']}")
+        print(f"  Seed: {lp_config['seed']}")
+        t0 = time.time()
+    
+    # DMO lensplanes
+    generate_model_lensplanes('dmo', dmo.coords, dmo.masses,
+                              transforms, lp_config['grid_res'], BOX_SIZE,
+                              output_dir, args.snap, comm)
+    
+    # Hydro lensplanes
+    generate_model_lensplanes('hydro', hydro.coords, hydro.masses,
+                              transforms, lp_config['grid_res'], BOX_SIZE,
+                              output_dir, args.snap, comm)
+    
+    if rank == 0:
+        print(f"  Lensplane generation time: {time.time()-t0:.1f}s")
+    
+    # Cleanup
+    dmo.free()
+    hydro.free()
+    
+    if rank == 0:
+        print("\n" + "=" * 70)
+        print(f"Total time: {time.time()-t_start:.1f}s")
+        print("=" * 70)
 
 
 def run_phase5_only(args):
@@ -1641,10 +1850,11 @@ def run_phase5_only(args):
     if rank == 0:
         print("\n[2/3] Loading particles and building KDTrees...")
     
-    dmo = DistributedParticles(args.snap, args.sim_res, 'dmo', args.radius_mult)
+    # Use lensplane_only=True to skip loading IDs/types (saves ~9GB per rank)
+    dmo = DistributedParticles(args.snap, args.sim_res, 'dmo', args.radius_mult, lensplane_only=True)
     dmo.load().build_tree()
     
-    hydro = DistributedParticles(args.snap, args.sim_res, 'hydro', args.radius_mult)
+    hydro = DistributedParticles(args.snap, args.sim_res, 'hydro', args.radius_mult, lensplane_only=True)
     hydro.load().build_tree()
     
     # Run lensplane generation

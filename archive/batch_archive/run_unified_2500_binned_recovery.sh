@@ -1,35 +1,25 @@
 #!/bin/bash
-#SBATCH --job-name=unified_binned
-#SBATCH --output=logs/unified_binned_%A_%a.o
-#SBATCH --error=logs/unified_binned_%A_%a.e
+#SBATCH --job-name=binned_recovery
+#SBATCH --output=logs/binned_recovery_%A_%a.o
+#SBATCH --error=logs/binned_recovery_%A_%a.e
 #SBATCH --nodes=8
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=2
 #SBATCH --time=14:00:00
 #SBATCH --partition=cca
 #SBATCH --array=0-199
 
 # =============================================================================
-# Array job for BINNED mode unified pipeline on L205n2500TNG
+# Recovery job for BINNED mode unified pipeline
 # =============================================================================
 #
-# This script runs the binned mass×radius shell replacement pipeline.
-# 
-# Configuration:
-#   - 100 total configs (10 mass bins × 10 radius shells)
-#   - 20 snapshots in the lightcone
-#   - Split into 10 chunks of 10 configs each per snapshot
-#   - Total array tasks: 20 snapshots × 10 chunks = 200 tasks
+# This script continues processing any configs that weren't completed by the
+# initial run. Uses --skip-existing to skip already-completed configs.
 #
-# Task mapping:
-#   SNAP_IDX = TASK_ID / 10   (0-19, maps to snapshot number)
-#   CHUNK    = TASK_ID % 10   (0-9, maps to config range)
+# Submit with dependency on the main job:
+#   sbatch --dependency=afterany:JOBID run_unified_2500_binned_recovery.sh
 #
-# Each chunk processes configs [CHUNK*10, CHUNK*10+10)
-#
-# Usage:
-#   sbatch run_unified_2500_binned_array.sh              # Run all
-#   sbatch --array=0-9 run_unified_2500_binned_array.sh  # Only snapshot 96 (all chunks)
-#   sbatch --array=0,10,20 run_unified_2500_binned_array.sh  # Chunk 0 of first 3 snaps
+# Or submit standalone to complete missing files:
+#   sbatch run_unified_2500_binned_recovery.sh
 #
 # =============================================================================
 
@@ -58,7 +48,7 @@ CONFIG_START=$((CHUNK * CONFIGS_PER_CHUNK))
 CONFIG_END=$((CONFIG_START + CONFIGS_PER_CHUNK))
 
 echo "========================================"
-echo "Unified Pipeline - BINNED MODE"
+echo "Unified Pipeline - BINNED MODE (RECOVERY)"
 echo "========================================"
 echo "Array task: $SLURM_ARRAY_TASK_ID"
 echo "Snapshot index: $SNAP_IDX -> Snapshot: $SNAP"
@@ -69,6 +59,7 @@ echo "Started: $(date)"
 echo "========================================"
 
 # Run unified pipeline in binned mode with config range
+# --skip-existing will skip any configs already completed
 srun python3 -u scripts/generate_all_unified.py \
     --snap $SNAP \
     --sim-res 2500 \
