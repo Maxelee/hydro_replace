@@ -18,9 +18,20 @@ N_LP = 20         # Lensplane orientations (LP_00 to LP_19)
 N_RUNS = 100      # Ray-traced maps per LP (run001 to run100)
 
 # Weak lensing parameters
-SMOOTHING_ARCMIN = 2.5  # Gaussian smoothing scale
+SMOOTHING_ARCMIN = 0.0  # No smoothing (was 2.5 arcmin)
 PIXEL_SCALE_ARCMIN = FOV_DEG * 60.0 / RT_GRID  # ~0.293 arcmin/pixel
-SN_BINS = np.arange(-5, 11, 1)  # 16 edges → 15 bins for S/N histograms
+SN_BINS = np.linspace(-5, 10, 51)  # 51 edges → 50 bins for S/N histograms (-5σ to 10σ)
+
+# Wavelet Scattering Transform parameters
+WST_J = 5       # Number of octaves (probes scales from ~2 to ~64 pixels)
+WST_Q = 1       # Scales per octave
+WST_MOMENTS = (0.5, 1.0, 2.0)  # Moment orders for WST coefficients
+
+# Bispectrum parameters
+# Extended to ℓ=50000 to better match C_ℓ range (which goes to ~2×10^5)
+# Note: bispectrum is O(N³) so we use fewer bins at high ℓ
+BISPEC_ELL_BINS = np.logspace(np.log10(100), np.log10(50000), 20)  # 19 bins from ℓ=100 to 50000
+BISPEC_CONFIGS = ['equilateral', 'squeezed', 'folded', 'isosceles']  # Triangle configurations
 
 # Source redshift targets for convergence maps
 KAPPA_TARGETS = {
@@ -43,6 +54,9 @@ SNAPSHOT_ORDER = [96, 90, 85, 80, 76, 71, 67, 63, 59, 56,
                   52, 49, 46, 43, 41, 38, 35, 33, 31, 29]
 SNAPSHOT_REDSHIFTS = [0.04, 0.15, 0.27, 0.40, 0.50, 0.64, 0.78, 0.93, 1.07, 1.18,
                       1.36, 1.50, 1.65, 1.82, 1.93, 2.12, 2.32, 2.49, 2.68, 2.87]
+
+# Number of lensplane files per LP orientation (lenspot00.dat to lenspot39.dat)
+N_LENSPLANES = 40
 
 # Mass thresholds for cumulative models (M⊙/h)
 MASS_THRESHOLDS = ['1.00e12', '3.16e12', '1.00e13', '3.16e13']
