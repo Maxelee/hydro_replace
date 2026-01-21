@@ -162,29 +162,34 @@ def get_bcm_params(h=0.6774):
 
 def get_bcm_params_schneider19(h=0.6774):
     """
-    BCM parameters for Schneider19 model - TNG calibrated.
+    BCM parameters for Schneider19 model.
     
-    Values from Schneider+19 (arXiv:1810.08629) Figure 14,
-    calibrated to match IllustrisTNG-100 gas fractions and power spectrum.
-    Uses θ_ej=4 fit (middle value between 3 and 6).
+    Fiducial values from Sharma+ Table E (Schneider19+ column).
+    Masses in M_sun (no h-factor). Updated Jan 2026.
     """
     return dict(
-        # Gas profile parameters - TNG calibrated
-        theta_ej=4.0,              # Gas ejection radius [R200]
-        theta_co=0.1,              # Gas core radius [R200]
-        M_c=1.1e13 / h,            # TNG fit: characteristic mass for beta transition
-        mu_beta=0.55,              # TNG fit: mass slope for beta (0.55 for θ_ej=4)
-        gamma=2.0,                 # Outer gas slope
-        delta=7.0,                 # Inner gas slope
+        # Gas profile parameters - Sharma+ Table E fiducial
+        theta_ej=2.0,              # θ_ej,0: radius where outer slope changes [R200]
+        theta_co=0.05,             # θ_co,0: radius where inner slope changes [R200]
+        M_c=10**14.83,             # M_c,0: mass below which gas profile shallower than NFW
+        mu_beta=0.6,               # μ_β: mass dependence of inner slope β
+        gamma=2,                   # γ: outer slope of bound gas profile
+        delta=7,                   # δ: outer slope of bound gas profile
+        mu_co=0.0,                 # μ_co: power law index for mass dependence of θ_co
+        mu_ej=0.0,                 # μ_ej: power law index for mass dependence of θ_ej
         
-        # Stellar parameters - TNG calibrated
-        eta=0.3,                   # Total stellar fraction normalization
-        eta_delta=0.3,             # Central stellar fraction offset (η_cga = η + η_delta = 0.6)
-        tau=-1.5,                  # Low-mass stellar slope
-        tau_delta=0.0,             # Central stellar slope offset
-        A=0.09 / 2,                # Stellar amplitude (0.045)
-        M1=2.5e11 / h,             # Stellar characteristic mass
+        # Stellar parameters - Sharma+ Table E fiducial
+        A=0.045,                   # A: peak fraction of halo mass in stars
+        M1=10**11.5,               # M_1: characteristic halo mass for central galaxy (fixed)
+        eta=0.3,                   # η: power-law scaling for M200c >> M1
+        eta_delta=0.1,             # η_δ: power-law index for central galaxy high-mass end
+        tau=-1.5,                  # τ: power-law scaling for M200c << M1 (fixed)
+        tau_delta=0.0,             # τ_δ: power-law index for central galaxy low-mass end (fixed)
         epsilon_h=0.015,           # Half-light radius factor
+        
+        # Non-thermal pressure - Sharma+ Table E fiducial
+        alpha_nt=0.18,             # α_nt: non-thermal pressure fraction at R200c
+        gamma_nt=0.3,              # γ_nt: power-law scaling with radius
         
         # Adiabatic relaxation parameters
         a=0.3,                     # Relaxation parameter
@@ -222,9 +227,9 @@ def get_bcm_params_schneider25(h=0.6774):
     """
     BCM parameters for Schneider25 model.
     
-    Values from BaryonForge test defaults, which are based on
-    Schneider+25 model calibrations. This is an updated model
-    with improved gas profile parametrization.
+    Shared parameters (γ, δ, η, η_δ, τ, τ_δ, α_nt, γ_nt) from Sharma+ Table E
+    Schneider19+ column. Schneider25-specific params at BaryonForge defaults.
+    Updated Jan 2026.
     """
     return dict(
         # DM profile params
@@ -234,14 +239,14 @@ def get_bcm_params_schneider25(h=0.6774):
         p=0.3,                     # Two-halo term parameter
         q=0.707,                   # Two-halo term parameter
         
-        # Gas profile params
-        M_c=1e15,                  # Characteristic mass for gas slope
-        mu=0.8,                    # Mass dependence of gas slope (note: 'mu' not 'mu_beta')
-        theta_c=0.3,               # Gas core radius [R200]
+        # Gas profile params - gamma, delta from Sharma+ Table E
+        M_c=1e15,                  # Characteristic mass for gas slope (Schneider25 default)
+        mu_beta=0.8,               # Mass dependence of gas slope (Schneider25 default)
+        theta_c=0.3,               # Gas core radius [R200] (Schneider25 default)
         nu_theta_c=1/2,            # Redshift evolution of theta_c
         alpha=1,                   # Core slope
-        gamma=3/2,                 # Intermediate-scale slope
-        delta=7,                   # Large-scale slope
+        gamma=2,                   # γ: outer slope - Sharma+ Table E fiducial
+        delta=7,                   # δ: outer slope - Sharma+ Table E fiducial
         
         # Inner gas fraction params (REQUIRED for Schneider25)
         c_iga=0.1,                 # Inner gas amplitude
@@ -257,61 +262,57 @@ def get_bcm_params_schneider25(h=0.6774):
         nu_q2=0,                   # Redshift evolution of q2
         nstep=3/2,                 # Step function exponent for relaxation (REQUIRED)
         
-        # Star params
-        tau=-1.376,                # Low-mass stellar slope
-        tau_delta=0.0,             # Central stellar slope offset
-        Mstar=3e11,                # Stellar characteristic mass
-        Nstar=0.03,                # Stellar normalization
-        eta=0.1,                   # Stellar fraction normalization
-        eta_delta=0.22,            # Central stellar fraction offset
+        # Star params - eta, eta_delta, tau, tau_delta from Sharma+ Table E
+        tau=-1.5,                  # τ: low-mass stellar slope - Sharma+ Table E fiducial
+        tau_delta=0.0,             # τ_δ: central stellar slope offset - Sharma+ Table E fiducial
+        Mstar=3e11,                # Stellar characteristic mass (Schneider25 default)
+        Nstar=0.03,                # Stellar normalization (Schneider25 default)
+        eta=0.3,                   # η: stellar fraction - Sharma+ Table E fiducial
+        eta_delta=0.1,             # η_δ: central stellar offset - Sharma+ Table E fiducial
         epsilon_cga=0.03,          # Central galaxy size [R200]
         
-        # Stellar profile params
-        M1_0=1e11 / h,             # Stellar mass scale
-        epsilon_h=0.015,           # Half-light radius factor
-        
-        # Non-thermal pressure params
-        alpha_nt=0.1,              # Non-thermal pressure amplitude
+        # Non-thermal pressure params - from Sharma+ Table E
+        alpha_nt=0.18,             # α_nt: non-thermal pressure at R200c - Sharma+ Table E fiducial
         nu_nt=0.5,                 # Non-thermal pressure redshift evolution
-        gamma_nt=0.8,              # Non-thermal pressure slope
+        gamma_nt=0.3,              # γ_nt: NT pressure slope - Sharma+ Table E fiducial
         mean_molecular_weight=0.6125,  # Gas mean molecular weight
     )
 
 
 def get_bcm_params_arico20(h=0.6774):
     """
-    BCM parameters for Arico20 model - TNG calibrated.
+    BCM parameters for Arico20 model.
     
-    Values from Arico+20 (arXiv:2009.14225) calibrated to fit
-    IllustrisTNG-300 power spectrum and bispectrum.
+    Fiducial values from Sharma+ Table E (Arico24+ column).
+    Masses in M_sun (no h-factor). Updated Jan 2026.
     Note: Arico20 has sharper features, so Rdelta_sampling should be True.
     """
     return dict(
-        # Gas profile parameters - TNG calibrated
-        M_c=1.2e14 / h,            # TNG fit: characteristic mass for gas slope
-        mu=0.31,                   # TNG fit: gas slope mass dependence
-        beta=0.6,                  # TNG fit: gas slope parameter
-        M_inn=3.3e13 / h,          # Inner gas characteristic mass
-        theta_inn=0.1,             # Inner gas radius [R200]
-        theta_out=3.0,             # Outer gas radius [R200]
+        # Gas profile parameters - Sharma+ Table E fiducial
+        M_c=10**13.0,              # M_c: halo mass where halos lost half initial gas
+        mu=0.15,                   # μ_i: mass dependence of inner slope
+        beta=0.35,                 # β: slope of bound gas fraction-halo mass relation
+        M_inn=10**12.0,            # M_inn: halo mass where inner slope matches NFW
+        theta_inn=0.3,             # θ_inn: radius where inner slope changes [R200]
+        theta_out=1.0,             # θ_out: radius where outer slope changes [R200]
         epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
         theta_rg=0.3,              # Reaccreted gas radius
         sigma_rg=0.1,              # Reaccreted gas width
-        M_r=1e16,                  # Reaccreted gas mass scale
-        beta_r=2,                  # Reaccreted gas slope
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.5,                   # η: physical extent of ejected gas
         
-        # Stellar parameters - TNG calibrated
-        eta=0.6,                   # TNG fit: stellar fraction normalization
-        M1_0=2.2e11 / h,           # TNG fit: stellar characteristic mass
+        # Stellar parameters - Sharma+ Table E fiducial
+        M1_0=10**12.0,             # M_1,0: characteristic halo mass for central galaxies
         alpha_g=2,                 # Stellar profile slope
         epsilon_h=0.015,           # Half-light radius factor
         
-        # Satellite galaxy parameters
-        alpha_fsat=1,              # Satellite fraction mass slope
-        M1_fsat=1,                 # Satellite characteristic mass
-        delta_fsat=1,              # Satellite delta parameter
-        gamma_fsat=1,              # Satellite gamma parameter
-        eps_fsat=1,                # Satellite epsilon parameter
+        # Satellite galaxy parameters - Sharma+ Table E fiducial
+        M1_fsat=3.98,              # M_1,sat: scaling between satellite and central
+        eps_fsat=1.0,              # ε_sat: scaling parameter
+        alpha_fsat=1.0,            # α_sat: scaling parameter (fixed)
+        delta_fsat=0.99,           # δ_sat: scaling parameter
+        gamma_fsat=1.67,           # γ_sat: scaling parameter
         
         # Adiabatic relaxation parameters
         a=0.3,                     # Relaxation parameter
@@ -321,8 +322,9 @@ def get_bcm_params_arico20(h=0.6774):
         p=0.3,                     # Two-halo p parameter
         q=0.707,                   # Two-halo q parameter
         
-        # Non-thermal pressure parameters
-        A_nt=0.495,                # Non-thermal pressure amplitude
+        # Non-thermal pressure parameters - Sharma+ Table E fiducial
+        A_nt=0.495,                # A_th: fraction of thermal pressure support
+        T_w=10**6.5,               # T_w: temperature of ejected gas [K]
         alpha_nt=0.1,              # Non-thermal pressure slope
         
         # Gas thermodynamics

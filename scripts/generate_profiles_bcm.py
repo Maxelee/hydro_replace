@@ -71,34 +71,52 @@ CONFIG = {
     'log_mass_min': 12.0,   # Minimum halo mass log10(M/Msun/h)
 }
 
-# BCM parameters (same as generate_all.py)
+# BCM parameters - Fiducial values from Sharma+ Table E (Jan 2026)
+# Masses in M_sun (no h-factor)
 BCM_PARAMS = {
     'Arico20': dict(
-        M_c=3.3e13, M1_0=8.63e11, eta=0.54, beta=0.12,
-        mu=0.31, M_inn=3.3e13, theta_inn=0.1, theta_out=3,
-        epsilon_h=0.015, alpha_g=2,
+        # Gas profile - Sharma+ Table E Arico24+ fiducial
+        M_c=10**13.0, beta=0.35, mu=0.15,
+        M_inn=10**12.0, theta_inn=0.3, theta_out=1.0,
         epsilon_hydro=np.sqrt(5), theta_rg=0.3, sigma_rg=0.1,
+        M_r=10**18.0, beta_r=2, eta=0.5,
+        # Stellar - Sharma+ Table E Arico24+ fiducial
+        M1_0=10**12.0, alpha_g=2, epsilon_h=0.015,
+        # Satellite galaxies - Sharma+ Table E Arico24+ fiducial
+        M1_fsat=3.98, eps_fsat=1.0, alpha_fsat=1.0, delta_fsat=0.99, gamma_fsat=1.67,
+        # Relaxation and two-halo
         a=0.3, n=2, p=0.3, q=0.707,
-        alpha_fsat=1, M1_fsat=1, delta_fsat=1, gamma_fsat=1, eps_fsat=1,
-        M_r=1e16, beta_r=2,
-        A_nt=0.495, alpha_nt=0.1,
+        # Non-thermal pressure - Sharma+ Table E Arico24+ fiducial
+        A_nt=0.495, T_w=10**6.5, alpha_nt=0.1,
+        mean_molecular_weight=0.59,
     ),
     'Schneider19': dict(
-        theta_ej=4, theta_co=0.1, M_c=1e14/h, mu_beta=0.4,
-        gamma=2, delta=7,
-        eta=0.3, eta_delta=0.3, tau=-1.5, tau_delta=0,
-        A=0.09/2, M1=2.5e11/h, epsilon_h=0.015,
-        a=0.3, n=2, epsilon=4, p=0.3, q=0.707,
+        # Gas profile - Sharma+ Table E Schneider19+ fiducial
+        theta_ej=2.0, theta_co=0.05, M_c=10**14.83, mu_beta=0.6,
+        gamma=2, delta=7, mu_co=0.0, mu_ej=0.0,
+        # Stellar - Sharma+ Table E Schneider19+ fiducial
+        A=0.045, M1=10**11.5, eta=0.3, eta_delta=0.1, tau=-1.5, tau_delta=0.0,
+        epsilon_h=0.015,
+        # Non-thermal pressure - Sharma+ Table E Schneider19+ fiducial
+        alpha_nt=0.18, gamma_nt=0.3,
+        # Relaxation and two-halo
+        a=0.3, n=2, epsilon=4.0, p=0.3, q=0.707,
     ),
     'Schneider25': dict(
-        M_c=1e15, mu=0.8,
-        q0=0.075, q1=0.25, q2=0.7, nu_q0=0, nu_q1=1, nu_q2=0, nstep=3/2,
-        theta_c=0.3, nu_theta_c=1/2, c_iga=0.1, nu_c_iga=3/2, r_min_iga=1e-3,
-        alpha=1, gamma=3/2, delta=7,
-        tau=-1.376, tau_delta=0, Mstar=3e11, Nstar=0.03,
-        eta=0.1, eta_delta=0.22, epsilon_cga=0.03,
-        alpha_nt=0.1, nu_nt=0.5, gamma_nt=0.8, mean_molecular_weight=0.6125,
+        # DM profile
         epsilon0=4, epsilon1=0.5, alpha_excl=0.4, p=0.3, q=0.707,
+        # Gas profile - gamma, delta from Sharma+ Table E Schneider19+
+        M_c=1e15, mu_beta=0.8, theta_c=0.3, nu_theta_c=1/2,
+        alpha=1, gamma=2, delta=7,
+        # Inner gas fraction
+        c_iga=0.1, nu_c_iga=3/2, r_min_iga=1e-3,
+        # Relaxation
+        q0=0.075, q1=0.25, q2=0.7, nu_q0=0, nu_q1=1, nu_q2=0, nstep=3/2,
+        # Stellar - eta, eta_delta, tau, tau_delta from Sharma+ Table E Schneider19+
+        tau=-1.5, tau_delta=0.0, Mstar=3e11, Nstar=0.03,
+        eta=0.3, eta_delta=0.1, epsilon_cga=0.03,
+        # Non-thermal pressure - from Sharma+ Table E Schneider19+
+        alpha_nt=0.18, nu_nt=0.5, gamma_nt=0.3, mean_molecular_weight=0.6125,
     ),
 }
 
