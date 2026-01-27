@@ -34,19 +34,21 @@ BISPEC_ELL_BINS = np.logspace(np.log10(100), np.log10(50000), 20)  # 19 bins fro
 BISPEC_CONFIGS = ['equilateral', 'squeezed', 'folded', 'isosceles']  # Triangle configurations
 
 # Source redshift targets for convergence maps
-KAPPA_TARGETS = {
-    'z0.5': 13,   # kappa13.dat → z_s ≈ 0.506
-    'z1.0': 23,   # kappa23.dat → z_s ≈ 1.034
-    'z2.0': 36,   # kappa36.dat → z_s ≈ 2.094
-    'z2.5': 40    # kappa40.dat → z_s ≈ 2.568
-}
+# All 40 kappa files: kappa01.dat to kappa40.dat
+# χ = kappa_num × 102.5 h⁻¹Mpc, z_s computed from χ(z) relation
+KAPPA_TARGETS = {f'kappa{i:02d}': i for i in range(1, 41)}
 
-# Exact source redshifts for kappa targets
+# Exact source redshifts for all 40 kappa files
+# Based on χ(z) relation: χ = kappa_num × 102.5 h⁻¹Mpc
 KAPPA_REDSHIFTS = {
-    13: 0.506,
-    23: 1.034,
-    36: 2.094,
-    40: 2.568
+    1: 0.034, 2: 0.070, 3: 0.105, 4: 0.142, 5: 0.179,
+    6: 0.216, 7: 0.255, 8: 0.294, 9: 0.335, 10: 0.376,
+    11: 0.418, 12: 0.462, 13: 0.506, 14: 0.552, 15: 0.599,
+    16: 0.648, 17: 0.698, 18: 0.749, 19: 0.803, 20: 0.858,
+    21: 0.914, 22: 0.973, 23: 1.034, 24: 1.097, 25: 1.163,
+    26: 1.231, 27: 1.302, 28: 1.375, 29: 1.452, 30: 1.532,
+    31: 1.615, 32: 1.703, 33: 1.794, 34: 1.889, 35: 1.989,
+    36: 2.094, 37: 2.203, 38: 2.319, 39: 2.440, 40: 2.568
 }
 
 # Snapshot configuration for density analysis (20 snapshots)
@@ -102,7 +104,10 @@ def build_model_name(Ml, Mu, Ri, Ro):
     str
         Model name in format: hydro_replace_Ml_{Ml}_Mu_{Mu}_Ri_{Ri}_Ro_{Ro}
     """
-    return f"hydro_replace_Ml_{Ml:.2e}_Mu_{Mu:.2e}_Ri_{Ri:.1f}_Ro_{Ro:.1f}"
+    # Format with .2e and remove '+' sign (e.g., 1.00e+12 -> 1.00e12)
+    Ml_str = f"{Ml:.2e}".replace('e+', 'e')
+    Mu_str = f"{Mu:.2e}".replace('e+', 'e')
+    return f"hydro_replace_Ml_{Ml_str}_Mu_{Mu_str}_Ri_{Ri:.1f}_Ro_{Ro:.1f}"
 
 
 def get_all_models():

@@ -225,3 +225,123 @@ def compute_summary_stats(F, x, x_ranges=None):
         summary[label] = mean_F
     
     return summary
+
+
+# ============================================================
+# Miller Correction Functions
+# ============================================================
+
+def compute_mass_deficit(M_dmo, M_replace):
+    """
+    Compute fractional mass deficit.
+    
+    f = (M_DMO - M_Replace) / M_DMO
+    
+    f > 0 means Replace has less mass than DMO (mass deficit)
+    f < 0 means Replace has more mass than DMO (mass excess)
+    
+    Parameters
+    ----------
+    M_dmo : float or np.ndarray
+        DMO total mass
+    M_replace : float or np.ndarray
+        Replace total mass
+    
+    Returns
+    -------
+    float or np.ndarray
+        Mass deficit fraction
+    """
+    return (M_dmo - M_replace) / M_dmo
+
+
+def apply_miller_correction(Pk, f):
+    """
+    Apply Miller et al. (2023) correction to power spectrum.
+    
+    The mass deficit artificially boosts P(k) because of reduced mean density:
+        δ = ρ/⟨ρ⟩ - 1
+    
+    If ⟨ρ⟩ is lower (mass deficit), δ is artificially inflated.
+    
+    Correction rescales the field: ρ_corr = ρ × (1-f)
+    For power spectrum (∝ ρ²): P_corr(k) = P(k) × (1-f)²
+    
+    Parameters
+    ----------
+    Pk : np.ndarray
+        Power spectrum (any shape)
+    f : float or np.ndarray
+        Mass deficit fraction. If array, should broadcast with Pk.
+    
+    Returns
+    -------
+    np.ndarray
+        Corrected power spectrum
+    """
+    return Pk * (1 - f)**2
+
+
+def compute_F_with_miller(Pk_R, Pk_D, Pk_H, f_R, threshold=0.02):
+    """
+    Compute response fraction with Miller correction applied.
+    
+    Parameters
+    ----------
+    Pk_R : np.ndarray
+        Replace power spectrum
+    Pk_D : np.ndarray
+        DMO power spectrum
+    Pk_H : np.ndarray
+        Hydro power spectrum
+    f_R : float or np.ndarray
+        Mass deficit of Replace model
+    threshold : float
+        Relative threshold for masking insignificant baryonic effects
+    
+    Returns
+    -------
+    F_uncorr : np.ndarray
+        Uncorrected response fraction
+    F_corr : np.ndarray
+        Miller-corrected response fraction
+    """
+    # Uncorrected response
+    F_uncorr = compute_F_S(Pk_R, Pk_D, Pk_H, threshold=threshold)
+    
+    # Apply Miller correction to Replace P(k)
+    Pk_R_corr = apply_miller_correction(Pk_R, f_R)
+    F_corr = compute_F_S(Pk_R_corr, Pk_D, Pk_H, threshold=threshold)
+    
+    return F_uncorr, F_corr
+
+
+def compute_mass_deficit_from_stats(model_mass, dmo_mass):
+    """
+    Compute mass deficit from stats.h5 mass arrays.
+    
+    Parameters
+    ----------
+    model_mass : np.ndarray
+        Mass array from Replace model, shape (N_LP, N_planes)
+    dmo_mass : np.ndarray
+        Mass array from DMO model, shape (N_LP, N_planes)
+    
+    Returns
+    -------
+    f_mean : float
+        Mean mass deficit across all lensplanes
+    f_std : float
+        Standard deviation of mass deficit
+    f_all : np.ndarray
+        Mass deficit for each lensplane
+    """
+    # Compute mass deficit for each lensplane
+    f_all = compute_mass_deficit(dmo_mass, model_mass)
+    
+    # Mean and std across all lensplanes
+    f_mean = np.nanmean(f_all)
+    f_std = np.nanstd(f_all)
+    
+    return f_mean, f_std, f_all
+

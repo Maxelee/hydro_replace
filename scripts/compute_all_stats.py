@@ -89,7 +89,7 @@ def get_kappa_path(model, lp, run, kappa_num):
 
 def compute_density_stats(model, comm):
     """
-    Compute density statistics (P(k)) from lensplanes.
+    Compute density statistics (P(k)) and total mass from lensplanes.
     
     Returns
     -------
@@ -97,12 +97,14 @@ def compute_density_stats(model, comm):
         Shape (N_LP, N_snap, N_k), only on rank 0
     k_bins : np.ndarray or None
         Wavenumber bins, only on rank 0
+    mass_data : np.ndarray or None
+        Total mass per lensplane, shape (N_LP, N_snap), only on rank 0
     """
     rank = comm.Get_rank()
     size = comm.Get_size()
     
     if rank == 0:
-        print(f"Computing density statistics (P(k))...", flush=True)
+        print(f"Computing density statistics (P(k) and mass)...", flush=True)
     
     # Build task list: (lp, plane_idx)
     # There are 40 lensplanes per LP (lenspot00.dat to lenspot39.dat)
@@ -114,9 +116,8 @@ def compute_density_stats(model, comm):
     # Distribute tasks
     my_tasks = tasks[rank::size]
     
-    # Storage for local results
-    local_Pk_list = []
-    local_k_list = []
+    # Storage for local results: (lp, plane_idx, k, Pk, mass)
+    local_results_list = []
     
     # Process tasks
     for task_idx, (lp, plane_idx) in enumerate(my_tasks):
@@ -128,32 +129,35 @@ def compute_density_stats(model, comm):
         if not os.path.exists(lp_path):
             if rank == 0 and task_idx == 0:
                 print(f"  WARNING: Missing {lp_path}", flush=True)
-            local_Pk_list.append((lp, plane_idx, None, None))
+            local_results_list.append((lp, plane_idx, None, None, None))
             continue
         
         try:
             # Load lensplane (binary format, not npz)
             field = read_lensplane(lp_path)
             
+            # Compute total mass (sum of pixel values in M_sun/h)
+            total_mass = np.sum(field)
+            
             # Compute P(k)
             k, Pk = compute_Pk_2d(field, BOX_SIZE)
             
-            local_Pk_list.append((lp, plane_idx, k, Pk))
+            local_results_list.append((lp, plane_idx, k, Pk, total_mass))
             
         except Exception as e:
             if rank == 0:
                 print(f"  ERROR: {lp_path}: {e}", flush=True)
-            local_Pk_list.append((lp, plane_idx, None, None))
+            local_results_list.append((lp, plane_idx, None, None, None))
     
     # Gather results
-    all_results = comm.gather(local_Pk_list, root=0)
+    all_results = comm.gather(local_results_list, root=0)
     
     if rank == 0:
         # Combine results
         # First pass: determine k bins (should be same for all)
         k_bins = None
         for results in all_results:
-            for lp, plane_idx, k, Pk in results:
+            for lp, plane_idx, k, Pk, mass in results:
                 if k is not None:
                     k_bins = k
                     break
@@ -162,23 +166,27 @@ def compute_density_stats(model, comm):
         
         if k_bins is None:
             print("  ERROR: No valid P(k) computed!", flush=True)
-            return None, None
+            return None, None, None
         
-        # Initialize output array
+        # Initialize output arrays
         n_k = len(k_bins)
         Pk_data = np.zeros((N_LP, N_LENSPLANES, n_k), dtype=np.float32)
         Pk_data[:] = np.nan
+        mass_data = np.zeros((N_LP, N_LENSPLANES), dtype=np.float64)
+        mass_data[:] = np.nan
         
         # Fill in results
         for results in all_results:
-            for lp, plane_idx, k, Pk in results:
+            for lp, plane_idx, k, Pk, mass in results:
                 if Pk is not None:
                     Pk_data[lp, plane_idx, :] = Pk
+                if mass is not None:
+                    mass_data[lp, plane_idx] = mass
         
-        print(f"  Density stats complete. Shape: {Pk_data.shape}", flush=True)
-        return Pk_data, k_bins
+        print(f"  Density stats complete. Pk shape: {Pk_data.shape}, Mass shape: {mass_data.shape}", flush=True)
+        return Pk_data, k_bins, mass_data
     
-    return None, None
+    return None, None, None
 
 
 def compute_convergence_stats(model, dmo_rms, comm):
@@ -406,7 +414,7 @@ def compute_convergence_stats(model, dmo_rms, comm):
     return None
 
 
-def save_results(model, Pk_data, k_bins, conv_results):
+def save_results(model, Pk_data, k_bins, mass_data, conv_results):
     """Save all statistics to HDF5. Only saves computed statistics."""
     output_dir = os.path.join(STATS_BASE, model)
     os.makedirs(output_dir, exist_ok=True)
@@ -420,6 +428,10 @@ def save_results(model, Pk_data, k_bins, conv_results):
             f.create_dataset('k_bins', data=k_bins, dtype='float32')
             f.attrs['snapshot_order'] = SNAPSHOT_ORDER
             f.attrs['snapshot_redshifts'] = SNAPSHOT_REDSHIFTS
+        
+        # Total mass per lensplane (for Miller correction)
+        if mass_data is not None:
+            f.create_dataset('mass', data=mass_data, dtype='float64', compression='gzip')
         
         # Convergence statistics (only save what was computed)
         if conv_results is not None:
@@ -582,9 +594,9 @@ def main():
     
     # Compute density statistics (if enabled)
     if COMPUTE_FLAGS['density']:
-        Pk_data, k_bins = compute_density_stats(args.model, comm)
+        Pk_data, k_bins, mass_data = compute_density_stats(args.model, comm)
     else:
-        Pk_data, k_bins = None, None
+        Pk_data, k_bins, mass_data = None, None, None
         if rank == 0:
             print("Skipping density P(k) computation")
     
@@ -599,7 +611,7 @@ def main():
     
     # Save results
     if rank == 0:
-        save_results(args.model, Pk_data, k_bins, conv_results)
+        save_results(args.model, Pk_data, k_bins, mass_data, conv_results)
         print()
         print("=" * 80)
         print(f"Statistics computation complete for {args.model}!")
