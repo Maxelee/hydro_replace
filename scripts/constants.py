@@ -5,8 +5,8 @@ Constants and configuration for the hydro_replace statistics pipeline.
 import numpy as np
 
 # Data paths
-LP_BASE = '/mnt/home/mlee1/ceph/hydro_replace_LP/L205n2500TNG'
-RT_BASE = '/mnt/home/mlee1/ceph/hydro_replace_RT/L205n2500TNG'
+LP_BASE = '/mnt/home/mlee1/ceph/hydro_replace_LP_bcm/L205n2500TNG'
+RT_BASE = '/mnt/home/mlee1/ceph/hydro_replace_RT_bcm/L205n2500TNG'
 STATS_BASE = '/mnt/home/mlee1/ceph/hydro_replace_stats'
 
 # Box and grid parameters

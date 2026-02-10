@@ -38,6 +38,10 @@ source /mnt/home/mlee1/venvs/hydro_replace/bin/activate
 
 cd /mnt/home/mlee1/hydro_replace2
 
+# Disable UCX CMA transport to avoid "Bad address" errors on multi-node MPI
+export UCX_TLS=^cma
+export UCX_LOG_LEVEL=warn
+
 # Snapshot order (from z≈0 to z≈2) - must match SNAPSHOT_ORDER in generate_all_unified.py
 SNAPSHOTS=(96 90 85 80 76 71 67 63 59 56 52 49 46 43 41 38 35 33 31 29)
 
@@ -62,11 +66,17 @@ echo "========================================"
 
 # Run Phase 4 only (DMO + Hydro lensplanes)
 # Note: --phase4-only uses optimized path that skips profiles and doesn't need KDTree
-srun python3 -u scripts/generate_all_unified.py \
+# srun python3 -u scripts/generate_all_unified.py \
+#     --snap $SNAP \
+#     --sim-res 2500 \
+#     --lensplane-grid 4096 \
+#     --phase4-only
+
+srun -n 64 python3 -u scripts/generate_all_unified.py \
     --snap $SNAP \
     --sim-res 2500 \
     --lensplane-grid 4096 \
-    --phase4-only
+
 
 echo ""
 echo "========================================"

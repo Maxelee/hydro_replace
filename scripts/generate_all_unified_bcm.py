@@ -167,6 +167,7 @@ def get_bcm_params_schneider19(h=0.6774):
     Fiducial values from Sharma+ Table E (Schneider19+ column).
     Masses in M_sun (no h-factor). Updated Jan 2026.
     """
+    return get_bcm_params(h=0.6774)
     return dict(
         # Gas profile parameters - Sharma+ Table E fiducial
         theta_ej=2.0,              # θ_ej,0: radius where outer slope changes [R200]
@@ -231,52 +232,11 @@ def get_bcm_params_schneider25(h=0.6774):
     Schneider19+ column. Schneider25-specific params at BaryonForge defaults.
     Updated Jan 2026.
     """
-    return dict(
-        # DM profile params
-        epsilon0=4,                # Base truncation radius
-        epsilon1=0.5,              # Peak-height dependence of truncation
-        alpha_excl=0.4,            # Exclusion radius parameter
-        p=0.3,                     # Two-halo term parameter
-        q=0.707,                   # Two-halo term parameter
-        
-        # Gas profile params - gamma, delta from Sharma+ Table E
-        M_c=1e15,                  # Characteristic mass for gas slope (Schneider25 default)
-        mu_beta=0.8,               # Mass dependence of gas slope (Schneider25 default)
-        theta_c=0.3,               # Gas core radius [R200] (Schneider25 default)
-        nu_theta_c=1/2,            # Redshift evolution of theta_c
-        alpha=1,                   # Core slope
-        gamma=2,                   # γ: outer slope - Sharma+ Table E fiducial
-        delta=7,                   # δ: outer slope - Sharma+ Table E fiducial
-        
-        # Inner gas fraction params (REQUIRED for Schneider25)
-        c_iga=0.1,                 # Inner gas amplitude
-        nu_c_iga=3/2,              # Inner gas redshift evolution
-        r_min_iga=1e-3,            # Minimum radius for inner gas profile [Mpc]
-        
-        # Relaxation params
-        q0=0.075,                  # Base relaxation amplitude
-        q1=0.25,                   # Central galaxy relaxation
-        q2=0.7,                    # Hot gas relaxation
-        nu_q0=0,                   # Redshift evolution of q0
-        nu_q1=1,                   # Redshift evolution of q1
-        nu_q2=0,                   # Redshift evolution of q2
-        nstep=3/2,                 # Step function exponent for relaxation (REQUIRED)
-        
-        # Star params - eta, eta_delta, tau, tau_delta from Sharma+ Table E
-        tau=-1.5,                  # τ: low-mass stellar slope - Sharma+ Table E fiducial
-        tau_delta=0.0,             # τ_δ: central stellar slope offset - Sharma+ Table E fiducial
-        Mstar=3e11,                # Stellar characteristic mass (Schneider25 default)
-        Nstar=0.03,                # Stellar normalization (Schneider25 default)
-        eta=0.3,                   # η: stellar fraction - Sharma+ Table E fiducial
-        eta_delta=0.1,             # η_δ: central stellar offset - Sharma+ Table E fiducial
-        epsilon_cga=0.03,          # Central galaxy size [R200]
-        
-        # Non-thermal pressure params - from Sharma+ Table E
-        alpha_nt=0.18,             # α_nt: non-thermal pressure at R200c - Sharma+ Table E fiducial
-        nu_nt=0.5,                 # Non-thermal pressure redshift evolution
-        gamma_nt=0.3,              # γ_nt: NT pressure slope - Sharma+ Table E fiducial
-        mean_molecular_weight=0.6125,  # Gas mean molecular weight
-    )
+    return dict(epsilon0 = 4, epsilon1 = 0.5, alpha_excl = 0.4, p = 0.3, q = 0.707, M_c = 1e15, mu = 0.8, 
+            q0 = 0.075, q1 = 0.25, q2 = 0.7, nu_q0 = 0, nu_q1 = 1, nu_q2 = 0, nstep = 3/2,
+            theta_c = 0.3, nu_theta_c = 1/2, c_iga = 0.1, nu_c_iga = 3/2, r_min_iga = 1e-3, alpha = 1, gamma = 3/2, delta = 7,
+            tau = -1.376, tau_delta = 0, Mstar = 3e11, Nstar = 0.03, eta = 0.1, eta_delta = 0.22, epsilon_cga = 0.03,
+            alpha_nt = 0.1, nu_nt = 0.5, gamma_nt = 0.8, mean_molecular_weight = 0.6125)
 
 
 def get_bcm_params_arico20(h=0.6774):
@@ -289,9 +249,9 @@ def get_bcm_params_arico20(h=0.6774):
     """
     return dict(
         # Gas profile parameters - Sharma+ Table E fiducial
-        M_c=10**13.0,              # M_c: halo mass where halos lost half initial gas
+        M_c=0.23*10**14,              # M_c: halo mass where halos lost half initial gas
         mu=0.15,                   # μ_i: mass dependence of inner slope
-        beta=0.35,                 # β: slope of bound gas fraction-halo mass relation
+        beta=4.09,                 # β: slope of bound gas fraction-halo mass relation
         M_inn=10**12.0,            # M_inn: halo mass where inner slope matches NFW
         theta_inn=0.3,             # θ_inn: radius where inner slope changes [R200]
         theta_out=1.0,             # θ_out: radius where outer slope changes [R200]
@@ -300,10 +260,10 @@ def get_bcm_params_arico20(h=0.6774):
         sigma_rg=0.1,              # Reaccreted gas width
         M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
         beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
-        eta=0.5,                   # η: physical extent of ejected gas
+        eta=0.14,                   # η: physical extent of ejected gas
         
         # Stellar parameters - Sharma+ Table E fiducial
-        M1_0=10**12.0,             # M_1,0: characteristic halo mass for central galaxies
+        M1_0=0.22*10**11,             # M_1,0: characteristic halo mass for central galaxies
         alpha_g=2,                 # Stellar profile slope
         epsilon_h=0.015,           # Half-light radius factor
         
@@ -332,8 +292,405 @@ def get_bcm_params_arico20(h=0.6774):
     )
 
 
+# ============================================================================
+# Alternative BCM Parameter Sets from Sharma+ 2507.13317 (Magneticum fits)
+# ============================================================================
+
+def get_bcm_params_schneider19_sharma(h=0.6774):
+    """
+    BCM parameters for Schneider19 model - Sharma+ arXiv:2507.13317 best fit.
+    
+    Extended set best-fit from joint fits to Rmm, Rmp from Magneticum at z=0.25.
+    See Table 3, Column 3 of Sharma+ 2507.13317.
+    """
+    return dict(
+        # Gas profile parameters - Sharma+ Table 3 extended set best fit
+        theta_ej=4.81,             # θ_ej,0: radius where outer slope changes [R200]
+        theta_co=0.30,             # θ_co,0: radius where inner slope changes [R200]
+        M_c=10**13.38,             # M_c,0: mass below which gas profile shallower than NFW
+        mu_beta=1.85,              # μ_β: mass dependence of inner slope β
+        gamma=3.54,                # γ: outer slope of bound gas profile
+        delta=5.63,                # δ: outer slope of bound gas profile
+        mu_co=-0.11,               # μ_co: power law index for mass dependence of θ_co
+        mu_ej=0.23,                # μ_ej: power law index for mass dependence of θ_ej
+        
+        # Stellar parameters - Sharma+ Table 3 best fit
+        A=0.03,                    # A: peak fraction of halo mass in stars
+        M1=10**11.5,               # M_1: characteristic halo mass for central galaxy (fixed)
+        eta=0.24,                  # η: power-law scaling for M200c >> M1
+        eta_delta=0.25,            # η_δ: power-law index for central galaxy high-mass end
+        tau=-1.5,                  # τ: power-law scaling for M200c << M1 (fixed)
+        tau_delta=0.0,             # τ_δ: power-law index for central galaxy low-mass end (fixed)
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Non-thermal pressure - Sharma+ Table 3 best fit
+        alpha_nt=0.14,             # α_nt: non-thermal pressure fraction at R200c
+        gamma_nt=2.87,             # γ_nt: power-law scaling with radius
+        
+        # Adiabatic relaxation parameters
+        a=0.3,                     # Relaxation parameter
+        n=2,                       # NFW inner slope modification
+        
+        # NFW truncation and 2-halo parameters
+        epsilon=4.0,               # Truncation radius [R200]
+        p=0.3,                     # Two-halo term parameter
+        q=0.707,                   # Two-halo term parameter
+    )
+
+
+def get_bcm_params_arico20_sharma(h=0.6774):
+    """
+    BCM parameters for Arico20 model - Sharma+ arXiv:2507.13317 best fit.
+    
+    Extended set best-fit from joint fits to Rmm, Rmp from Magneticum at z=0.25.
+    See Table 3, Column 3 of Sharma+ 2507.13317.
+    Note: Arico20 has sharper features, so Rdelta_sampling should be True.
+    """
+    return dict(
+        # Gas profile parameters - Sharma+ Table 3 extended set best fit
+        M_c=10**13.49,             # M_c: halo mass where halos lost half initial gas
+        mu=0.17,                   # μ_i: mass dependence of inner slope
+        beta=1.96,                 # β: slope of bound gas fraction-halo mass relation
+        M_inn=10**10.55,           # M_inn: halo mass where inner slope matches NFW
+        theta_inn=0.17,            # θ_inn: radius where inner slope changes [R200]
+        theta_out=9.79,            # θ_out: radius where outer slope changes [R200]
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.61,                  # η: physical extent of ejected gas
+        
+        # Stellar parameters - Sharma+ Table 3 best fit
+        M1_0=10**10.19,            # M_1,0: characteristic halo mass for central galaxies
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - Sharma+ Table 3 best fit
+        M1_fsat=4.39,              # M_1,sat: scaling between satellite and central
+        eps_fsat=0.59,             # ε_sat: scaling parameter
+        alpha_fsat=1.0,            # α_sat: scaling parameter (fixed)
+        delta_fsat=0.89,           # δ_sat: scaling parameter
+        gamma_fsat=2.37,           # γ_sat: scaling parameter
+        
+        # Adiabatic relaxation parameters
+        a=0.3,                     # Relaxation parameter
+        n=2,                       # NFW inner slope modification
+        
+        # Two-halo term parameters
+        p=0.3,                     # Two-halo p parameter
+        q=0.707,                   # Two-halo q parameter
+        
+        # Non-thermal pressure parameters - Sharma+ Table 3 best fit
+        A_nt=0.27,                 # A_th: fraction of thermal pressure support
+        T_w=10**7.23,              # T_w: temperature of ejected gas [K]
+        alpha_nt=0.1,              # Non-thermal pressure slope
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,  # Gas mean molecular weight
+    )
+
+
+def get_bcm_params_arico20_tng(h=0.6774):
+    """
+    BCM parameters for Arico20 model - TNG profile-fitted.
+    
+    Best-fit from fitting Arico20 profiles to TNG stacked density profiles
+    using differential evolution (fit_bcm_to_profiles.py).
+    
+    Fitted to TNG L205n2500 profiles at z=0.04-0.4, mass bins 10^12-10^14 Msun/h.
+    chi2 = 0.0046 (excellent fit to profiles).
+    """
+    return dict(
+        # Gas profile parameters - TNG profile-fitted (Jan 2026)
+        M_c=10**11.5463,           # M_c: characteristic mass (lower than defaults!)
+        mu=0.05,                   # μ_i: mass dependence of inner slope (at lower bound)
+        beta=3.9326,               # β: slope of bound gas fraction-halo mass relation
+        M_inn=10**9.1835,          # M_inn: halo mass where inner slope matches NFW
+        theta_inn=0.0617,          # θ_inn: radius where inner slope changes [R200]
+        theta_out=10.6409,         # θ_out: radius where outer slope changes [R200]
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.2610,                # η: physical extent of ejected gas
+        eta_delta=0.1,             # η_δ: mass dependence of eta
+        
+        # Stellar parameters - TNG profile-fitted
+        M1_0=10**9.6509,           # M_1,0: characteristic halo mass for central galaxies
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - use Sharma defaults
+        M1_fsat=3.98,              # M_1,sat: scaling between satellite and central
+        eps_fsat=1.0,              # ε_sat: scaling parameter
+        alpha_fsat=1.0,            # α_sat: scaling parameter (fixed)
+        delta_fsat=0.99,           # δ_sat: scaling parameter
+        gamma_fsat=1.67,           # γ_sat: scaling parameter
+        
+        # Adiabatic relaxation parameters
+        a=0.3,                     # Relaxation parameter
+        n=2,                       # NFW inner slope modification
+        
+        # Two-halo term parameters
+        p=0.3,                     # Two-halo p parameter
+        q=0.707,                   # Two-halo q parameter
+        
+        # Non-thermal pressure parameters
+        A_nt=0.495,                # A_th: fraction of thermal pressure support
+        T_w=10**6.5,               # T_w: temperature of ejected gas [K]
+        alpha_nt=0.1,              # Non-thermal pressure slope
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,  # Gas mean molecular weight
+    )
+
+
+# ============================================================================
+# Mass-Dependent TNG-Fitted Arico20 Parameters
+# ============================================================================
+# These parameters were fit separately to each mass bin using fit_bcm_mass_dependent.py
+# The fits are stored in config/bcm_fits/bcm_tng_fit_arico20_M{bin}.json
+# Mass bins:
+#   - low: 10^12.0 - 10^12.5 Msun/h
+#   - mid_low: 10^12.5 - 10^13.0 Msun/h
+#   - mid_high: 10^13.0 - 10^13.5 Msun/h
+#   - high: 10^13.5 - 10^14.0 Msun/h
+
+def get_bcm_params_arico20_tng_low(h=0.6774):
+    """
+    BCM parameters for Arico20 model - TNG profile-fitted to LOW mass bin.
+    
+    Mass bin: 10^12.0 - 10^12.5 Msun/h (log M_center = 12.25)
+    From fit_bcm_mass_dependent.py chi2 = 0.0039
+    """
+    return dict(
+        # Gas profile parameters - fitted to low mass bin
+        M_c=10**11.4567,           # log_M_c from fit
+        mu=0.1706,                 # mu from fit
+        beta=4.5386,               # beta from fit
+        M_inn=10**10.1705,         # log_M_inn from fit
+        theta_inn=0.05,            # theta_inn from fit (at lower bound)
+        theta_out=14.3647,         # theta_out from fit
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.5443,                # eta from fit
+        eta_delta=0.1,             # η_δ: mass dependence of eta
+        
+        # Stellar parameters - fitted
+        M1_0=10**9.5475,           # log_M1_0 from fit
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - use Sharma defaults
+        M1_fsat=3.98, eps_fsat=1.0, alpha_fsat=1.0, delta_fsat=0.99, gamma_fsat=1.67,
+        
+        # Adiabatic relaxation parameters
+        a=0.3, n=2,
+        
+        # Two-halo term parameters
+        p=0.3, q=0.707,
+        
+        # Non-thermal pressure parameters
+        A_nt=0.495, T_w=10**6.5, alpha_nt=0.1,
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,
+    )
+
+
+def get_bcm_params_arico20_tng_mid_low(h=0.6774):
+    """
+    BCM parameters for Arico20 model - TNG profile-fitted to MID_LOW mass bin.
+    
+    Mass bin: 10^12.5 - 10^13.0 Msun/h (log M_center = 12.75)
+    From fit_bcm_mass_dependent.py chi2 = 0.0069
+    """
+    return dict(
+        # Gas profile parameters - fitted to mid_low mass bin
+        M_c=10**11.7045,           # log_M_c from fit
+        mu=0.3658,                 # mu from fit
+        beta=2.8304,               # beta from fit
+        M_inn=10**12.3254,         # log_M_inn from fit
+        theta_inn=0.05,            # theta_inn from fit (at lower bound)
+        theta_out=13.1959,         # theta_out from fit
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.6355,                # eta from fit
+        eta_delta=0.1,             # η_δ: mass dependence of eta
+        
+        # Stellar parameters - fitted
+        M1_0=10**9.5700,           # log_M1_0 from fit
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - use Sharma defaults
+        M1_fsat=3.98, eps_fsat=1.0, alpha_fsat=1.0, delta_fsat=0.99, gamma_fsat=1.67,
+        
+        # Adiabatic relaxation parameters
+        a=0.3, n=2,
+        
+        # Two-halo term parameters
+        p=0.3, q=0.707,
+        
+        # Non-thermal pressure parameters
+        A_nt=0.495, T_w=10**6.5, alpha_nt=0.1,
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,
+    )
+
+
+def get_bcm_params_arico20_tng_mid_high(h=0.6774):
+    """
+    BCM parameters for Arico20 model - TNG profile-fitted to MID_HIGH mass bin.
+    
+    Mass bin: 10^13.0 - 10^13.5 Msun/h (log M_center = 13.25)
+    From fit_bcm_mass_dependent.py chi2 = 0.0036
+    """
+    return dict(
+        # Gas profile parameters - fitted to mid_high mass bin
+        M_c=10**11.4483,           # log_M_c from fit
+        mu=0.0879,                 # mu from fit
+        beta=2.7041,               # beta from fit
+        M_inn=10**12.1971,         # log_M_inn from fit
+        theta_inn=0.05,            # theta_inn from fit (at lower bound)
+        theta_out=9.7013,          # theta_out from fit
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.3118,                # eta from fit
+        eta_delta=0.1,             # η_δ: mass dependence of eta
+        
+        # Stellar parameters - fitted
+        M1_0=10**9.6474,           # log_M1_0 from fit
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - use Sharma defaults
+        M1_fsat=3.98, eps_fsat=1.0, alpha_fsat=1.0, delta_fsat=0.99, gamma_fsat=1.67,
+        
+        # Adiabatic relaxation parameters
+        a=0.3, n=2,
+        
+        # Two-halo term parameters
+        p=0.3, q=0.707,
+        
+        # Non-thermal pressure parameters
+        A_nt=0.495, T_w=10**6.5, alpha_nt=0.1,
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,
+    )
+
+
+def get_bcm_params_arico20_tng_high(h=0.6774):
+    """
+    BCM parameters for Arico20 model - TNG profile-fitted to HIGH mass bin.
+    
+    Mass bin: 10^13.5 - 10^14.0 Msun/h (log M_center = 13.75)
+    From fit_bcm_mass_dependent.py chi2 = 0.0003
+    """
+    return dict(
+        # Gas profile parameters - fitted to high mass bin
+        M_c=10**12.2983,           # log_M_c from fit
+        mu=0.0638,                 # mu from fit
+        beta=0.3649,               # beta from fit
+        M_inn=10**12.9301,         # log_M_inn from fit
+        theta_inn=0.05,            # theta_inn from fit (at lower bound)
+        theta_out=1.9264,          # theta_out from fit
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.0586,                # eta from fit
+        eta_delta=0.1,             # η_δ: mass dependence of eta
+        
+        # Stellar parameters - fitted
+        M1_0=10**9.7936,           # log_M1_0 from fit
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - use Sharma defaults
+        M1_fsat=3.98, eps_fsat=1.0, alpha_fsat=1.0, delta_fsat=0.99, gamma_fsat=1.67,
+        
+        # Adiabatic relaxation parameters
+        a=0.3, n=2,
+        
+        # Two-halo term parameters
+        p=0.3, q=0.707,
+        
+        # Non-thermal pressure parameters
+        A_nt=0.495, T_w=10**6.5, alpha_nt=0.1,
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,
+    )
+
+
+def get_bcm_params_arico20_tng_joint(h=0.6774):
+    """
+    BCM parameters for Arico20 model - TNG profile-fitted JOINTLY to all mass bins.
+    
+    This is a single parameter set optimized to fit all mass bins (10^12 - 10^14 Msun/h)
+    simultaneously. Use this for a unified BCM that doesn't require mass-dependent tuning.
+    
+    From fit_bcm_mass_dependent.py --joint
+    Total χ² = 0.00459 (averaged over all mass bins)
+    Per-bin χ²: low=0.0059, mid_low=0.0074, mid_high=0.0038, high=0.0013
+    """
+    return dict(
+        # Gas profile parameters - joint fit to all mass bins (Feb 2026)
+        M_c=10**11.5463,           # log_M_c = 11.546 from joint fit
+        mu=0.05,                   # mu = 0.05 (at lower bound)
+        beta=3.9326,               # beta = 3.933 from joint fit
+        M_inn=10**9.1835,          # log_M_inn = 9.184 from joint fit
+        theta_inn=0.0617,          # theta_inn = 0.062 from joint fit
+        theta_out=10.6409,         # theta_out = 10.641 from joint fit
+        epsilon_hydro=np.sqrt(5),  # Hydrostatic equilibrium factor
+        theta_rg=0.3,              # Reaccreted gas radius
+        sigma_rg=0.1,              # Reaccreted gas width
+        M_r=10**18.0,              # M_r: mass pivot for reaccreted gas fraction (fixed)
+        beta_r=2,                  # β_r: slope of reaccreted gas fraction (fixed)
+        eta=0.2610,                # eta = 0.261 from joint fit
+        eta_delta=0.1,             # η_δ: mass dependence of eta
+        
+        # Stellar parameters - joint fit
+        M1_0=10**9.6510,           # log_M1_0 = 9.651 from joint fit
+        alpha_g=2,                 # Stellar profile slope
+        epsilon_h=0.015,           # Half-light radius factor
+        
+        # Satellite galaxy parameters - use Sharma defaults
+        M1_fsat=3.98, eps_fsat=1.0, alpha_fsat=1.0, delta_fsat=0.99, gamma_fsat=1.67,
+        
+        # Adiabatic relaxation parameters
+        a=0.3, n=2,
+        
+        # Two-halo term parameters
+        p=0.3, q=0.707,
+        
+        # Non-thermal pressure parameters
+        A_nt=0.495, T_w=10**6.5, alpha_nt=0.1,
+        
+        # Gas thermodynamics
+        mean_molecular_weight=0.59,
+    )
+
+
 # Model registry mapping model names to their classes and parameter functions
+# Includes both default (TNG-calibrated) and Sharma+ (Magneticum-calibrated) variants
 BCM_MODELS = {
+    # Default models (TNG-calibrated parameters)
     'schneider19': {
         'DMO': bfg.Profiles.Schneider19.DarkMatterOnly if HAS_BARYONFORGE else None,
         'DMB': bfg.Profiles.Schneider19.DarkMatterBaryon if HAS_BARYONFORGE else None,
@@ -352,6 +709,71 @@ BCM_MODELS = {
         'params': get_bcm_params_arico20,
         'Rdelta_sampling': True,  # Important for Arico20 due to sharp features
     },
+    # Alternative models from Sharma+ arXiv:2507.13317 (Magneticum-calibrated)
+    'schneider19_sharma': {
+        'DMO': bfg.Profiles.Schneider19.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Schneider19.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_schneider19_sharma,
+        'Rdelta_sampling': False,
+    },
+    'arico20_sharma': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_sharma,
+        'Rdelta_sampling': True,  # Important for Arico20 due to sharp features
+    },
+    # TNG-fitted Arico20 from profile fitting (fit_bcm_to_profiles.py)
+    'arico20_tng': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_tng,
+        'Rdelta_sampling': True,
+    },
+    # Mass-dependent TNG-fitted Arico20 models (fit_bcm_mass_dependent.py)
+    # These use parameters fit separately to each mass bin for better per-bin accuracy
+    'arico20_tng_Mlow': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_tng_low,
+        'Rdelta_sampling': True,
+        'mass_range': (12.0, 12.5),  # log10(M/Msun/h)
+    },
+    'arico20_tng_Mmid_low': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_tng_mid_low,
+        'Rdelta_sampling': True,
+        'mass_range': (12.5, 13.0),  # log10(M/Msun/h)
+    },
+    'arico20_tng_Mmid_high': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_tng_mid_high,
+        'Rdelta_sampling': True,
+        'mass_range': (13.0, 13.5),  # log10(M/Msun/h)
+    },
+    'arico20_tng_Mhigh': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_tng_high,
+        'Rdelta_sampling': True,
+        'mass_range': (13.5, 15.0),  # log10(M/Msun/h) - all halos above 10^13.5
+    },
+    # Joint TNG-fitted Arico20: single param set for all masses (fit_bcm_mass_dependent.py --joint)
+    'arico20_tng_joint': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20_tng_joint,
+        'Rdelta_sampling': True,
+        'mass_range': (12.0, 15.0),  # log10(M/Msun/h) - all halos above 10^12
+    },
+     'arico20_high_mass': {
+        'DMO': bfg.Profiles.Arico20.DarkMatterOnly if HAS_BARYONFORGE else None,
+        'DMB': bfg.Profiles.Arico20.DarkMatterBaryon if HAS_BARYONFORGE else None,
+        'params': get_bcm_params_arico20,
+        'Rdelta_sampling': True,  # Important for Arico20 due to sharp features
+        'mass_range':(13, 16),
+    },
 }
 
 
@@ -361,10 +783,10 @@ BCM_MODELS = {
 
 LENSPLANE_CONFIG = {
     'enabled': False,
-    'n_realizations': 10,
+    'n_realizations': 20,  # Match generate_all_unified.py for consistent transforms
     'planes_per_snapshot': 2,
     'grid_res': 4096,
-    'seed': 2020,
+    'seed': 2020,  # Same seed as unified script for identical transforms
     'output_base': '/mnt/home/mlee1/ceph/hydro_replace_LP_bcm',
 }
 
@@ -774,11 +1196,15 @@ def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min
             # Distance in comoving Mpc/h
             r = np.sqrt(dx**2 + dy**2 + dz**2)
             
+            # Minimum radius to avoid BaryonForge interpolation table issues
+            # (table range is [0.001, 100] in Mpc, so 1e-4 Mpc/h ~ 1e-4/h Mpc is safe)
+            MIN_R_MPCH = 1e-4  # Mpc/h
+            r_safe = np.maximum(r, MIN_R_MPCH)  # Avoid r=0 issues
+            
             # Convert to comoving Mpc (BaryonForge uses Mpc, not Mpc/h)
-            r_mpc = r / h
+            r_mpc = r_safe / h
             
             # Unit vectors (direction from halo to particle)
-            r_safe = np.maximum(r, 1e-10)  # Avoid division by zero
             x_hat = dx / r_safe
             y_hat = dy / r_safe
             z_hat = dz / r_safe
@@ -934,8 +1360,8 @@ def run_bcm_pipeline(args):
     
     t_start = time.time()
     
-    # Parse models to run
-    models_to_run = [m.strip().lower() for m in args.models.split(',')]
+    # Parse models to run (preserve case for model names like arico20_tng_Mlow)
+    models_to_run = [m.strip() for m in args.models.split(',')]
     for model in models_to_run:
         if model not in BCM_MODELS:
             if rank == 0:
@@ -1063,8 +1489,25 @@ def run_bcm_pipeline(args):
             print(f"\n  Applying {model_name} displacements...")
             sys.stdout.flush()
         
+        # Check if this model has a mass_range - if so, only apply BCM to halos in that range
+        model_config = BCM_MODELS.get(model_name, {})
+        if 'mass_range' in model_config:
+            log_mass_lo, log_mass_hi = model_config['mass_range']
+            mass_filter = (halo_log_masses >= log_mass_lo) & (halo_log_masses < log_mass_hi)
+            halos_for_bcm = {
+                'masses': halo_masses[mass_filter],
+                'positions': halo_positions[mass_filter],
+                'radii': halo_radii[mass_filter],
+            }
+            if rank == 0:
+                print(f"    Mass-dependent BCM: filtering to {np.sum(mass_filter)} halos "
+                      f"in [{log_mass_lo:.1f}, {log_mass_hi:.1f}) log M⊙/h")
+        else:
+            # Apply to all halos (original behavior for non-mass-dependent models)
+            halos_for_bcm = halos
+        
         bcm_coords = apply_bcm_displacements_baryonforge(
-            baryons, dmo, halos, z_snap,
+            baryons, dmo, halos_for_bcm, z_snap,
             M_min=10**args.mass_min, M_max=1e16,
             cosmo_params=TNG_COSMOLOGY,
             epsilon_max=args.epsilon_max,
@@ -1076,111 +1519,129 @@ def run_bcm_pipeline(args):
             print(f"    BCM coords shape: {bcm_coords.shape}, DMO coords shape: {dmo.coords.shape}")
         
         # --------------------------------------------------------------------
-        # Compute BCM profiles and statistics
+        # Compute BCM profiles and statistics (skip if --skip-profiles)
         # --------------------------------------------------------------------
-        if rank == 0:
-            print(f"\n  Computing {model_name} profiles...")
-            sys.stdout.flush()
+        global_bcm_profiles = None
+        global_bcm_counts = None
+        global_bcm_stats = None
+        global_individual_profiles = None
+        global_individual_mass_profiles = None
         
-        # Build tree with BCM coordinates
-        bcm_tree = cKDTree(bcm_coords) if len(bcm_coords) > 0 else None
-        
-        local_bcm_profiles = np.zeros((n_mass_bins, n_radial_bins), dtype=np.float64)
-        local_bcm_counts = np.zeros((n_mass_bins, n_radial_bins), dtype=np.int64)
-        local_bcm_stats = np.zeros((n_halos, n_stats_radii), dtype=np.float64)
-        
-        # Individual profiles for each halo (density and mass)
-        local_individual_profiles = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
-        local_individual_mass_profiles = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
-        
-        for i in range(n_halos):
-            center = halo_positions[i]
-            r200 = halo_radii[i]
-            mass_bin = mass_bin_indices[i]
+        if not getattr(args, 'skip_profiles', False):
+            if rank == 0:
+                print(f"\n  Computing {model_name} profiles...")
+                sys.stdout.flush()
             
-            # Query BCM particles
-            search_radius = r200 * args.radius_mult
-            if bcm_tree is not None:
-                local_idx = bcm_tree.query_ball_point(center, search_radius)
-            else:
-                local_idx = []
+            # Build tree with BCM coordinates
+            bcm_tree = cKDTree(bcm_coords) if len(bcm_coords) > 0 else None
             
-            if len(local_idx) > 0:
-                local_idx = np.array(local_idx)
-                local_coords = bcm_coords[local_idx]
-                local_masses = dmo.masses[local_idx]  # Masses unchanged
-                
-                profile = compute_profile(local_coords, local_masses, center, r200, RADIAL_BINS)
-                
-                # Store individual profile for this halo
-                local_individual_profiles[i] = profile['density']
-                local_individual_mass_profiles[i] = profile['mass']
-                
-                if 0 <= mass_bin < n_mass_bins:
-                    local_bcm_profiles[mass_bin] += profile['density']
-                    local_bcm_counts[mass_bin] += profile['count']
-                
-                # Statistics at multiple radii
-                dx = local_coords - center
-                dx = np.where(dx > BOX_SIZE/2, dx - BOX_SIZE, dx)
-                dx = np.where(dx < -BOX_SIZE/2, dx + BOX_SIZE, dx)
-                r_norm = np.linalg.norm(dx, axis=1) / r200
-                
-                for j, r_mult in enumerate(STATS_RADII_MULT):
-                    mask = r_norm <= r_mult
-                    local_bcm_stats[i, j] = np.sum(local_masses[mask])
+            local_bcm_profiles = np.zeros((n_mass_bins, n_radial_bins), dtype=np.float64)
+            local_bcm_counts = np.zeros((n_mass_bins, n_radial_bins), dtype=np.int64)
+            local_bcm_stats = np.zeros((n_halos, n_stats_radii), dtype=np.float64)
             
-            if rank == 0 and (i + 1) % 500 == 0:
-                print(f"    {model_name} Halo {i+1}/{n_halos}...")
+            # Individual profiles for each halo (density and mass)
+            local_individual_profiles = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+            local_individual_mass_profiles = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+            
+            for i in range(n_halos):
+                center = halo_positions[i]
+                r200 = halo_radii[i]
+                mass_bin = mass_bin_indices[i]
+                
+                # Query BCM particles
+                search_radius = r200 * args.radius_mult
+                if bcm_tree is not None:
+                    local_idx = bcm_tree.query_ball_point(center, search_radius)
+                else:
+                    local_idx = []
+                
+                if len(local_idx) > 0:
+                    local_idx = np.array(local_idx)
+                    local_coords = bcm_coords[local_idx]
+                    local_masses = dmo.masses[local_idx]  # Masses unchanged
+                    
+                    profile = compute_profile(local_coords, local_masses, center, r200, RADIAL_BINS)
+                    
+                    # Store individual profile for this halo
+                    local_individual_profiles[i] = profile['density']
+                    local_individual_mass_profiles[i] = profile['mass']
+                    
+                    if 0 <= mass_bin < n_mass_bins:
+                        local_bcm_profiles[mass_bin] += profile['density']
+                        local_bcm_counts[mass_bin] += profile['count']
+                    
+                    # Statistics at multiple radii
+                    dx = local_coords - center
+                    dx = np.where(dx > BOX_SIZE/2, dx - BOX_SIZE, dx)
+                    dx = np.where(dx < -BOX_SIZE/2, dx + BOX_SIZE, dx)
+                    r_norm = np.linalg.norm(dx, axis=1) / r200
+                    
+                    for j, r_mult in enumerate(STATS_RADII_MULT):
+                        mask = r_norm <= r_mult
+                        local_bcm_stats[i, j] = np.sum(local_masses[mask])
+                
+                if rank == 0 and (i + 1) % 500 == 0:
+                    print(f"    {model_name} Halo {i+1}/{n_halos}...")
+                    sys.stdout.flush()
+            
+            # Reduce BCM profiles and stats
+            global_bcm_profiles = np.zeros_like(local_bcm_profiles)
+            global_bcm_counts = np.zeros_like(local_bcm_counts)
+            global_bcm_stats = np.zeros_like(local_bcm_stats)
+            
+            comm.Reduce(local_bcm_profiles, global_bcm_profiles, op=MPI.SUM, root=0)
+            comm.Reduce(local_bcm_counts, global_bcm_counts, op=MPI.SUM, root=0)
+            comm.Reduce(local_bcm_stats, global_bcm_stats, op=MPI.SUM, root=0)
+            
+            # Reduce individual profiles (each halo's profile is summed across ranks)
+            global_individual_profiles = np.zeros_like(local_individual_profiles)
+            global_individual_mass_profiles = np.zeros_like(local_individual_mass_profiles)
+            comm.Reduce(local_individual_profiles, global_individual_profiles, op=MPI.SUM, root=0)
+            comm.Reduce(local_individual_mass_profiles, global_individual_mass_profiles, op=MPI.SUM, root=0)
+            
+            # Print summary statistics for verification
+            if rank == 0:
+                total_mass_in_halos = np.sum(global_bcm_stats[:, 1])  # at R200
+                print(f"    Total mass within R200 across all halos: {total_mass_in_halos:.3e} Msun/h")
+                print(f"    Mean mass within R200 per halo: {total_mass_in_halos/n_halos:.3e} Msun/h")
+            
+            del bcm_tree
+            gc.collect()
+        else:
+            if rank == 0:
+                print(f"\n  Skipping {model_name} profile computation (--skip-profiles)")
                 sys.stdout.flush()
         
-        # Reduce BCM profiles and stats
-        global_bcm_profiles = np.zeros_like(local_bcm_profiles)
-        global_bcm_counts = np.zeros_like(local_bcm_counts)
-        global_bcm_stats = np.zeros_like(local_bcm_stats)
-        
-        comm.Reduce(local_bcm_profiles, global_bcm_profiles, op=MPI.SUM, root=0)
-        comm.Reduce(local_bcm_counts, global_bcm_counts, op=MPI.SUM, root=0)
-        comm.Reduce(local_bcm_stats, global_bcm_stats, op=MPI.SUM, root=0)
-        
-        # Reduce individual profiles (each halo's profile is summed across ranks)
-        global_individual_profiles = np.zeros_like(local_individual_profiles)
-        global_individual_mass_profiles = np.zeros_like(local_individual_mass_profiles)
-        comm.Reduce(local_individual_profiles, global_individual_profiles, op=MPI.SUM, root=0)
-        comm.Reduce(local_individual_mass_profiles, global_individual_mass_profiles, op=MPI.SUM, root=0)
-        
-        # Print summary statistics for verification
-        if rank == 0:
-            total_mass_in_halos = np.sum(global_bcm_stats[:, 1])  # at R200
-            print(f"    Total mass within R200 across all halos: {total_mass_in_halos:.3e} Msun/h")
-            print(f"    Mean mass within R200 per halo: {total_mass_in_halos/n_halos:.3e} Msun/h")
-        
-        del bcm_tree
-        gc.collect()
-        
         # --------------------------------------------------------------------
-        # Generate BCM map
+        # Generate BCM map (skip if --skip-2d-maps)
         # --------------------------------------------------------------------
-        if rank == 0:
-            print(f"\n  Generating {model_name} map...")
-            sys.stdout.flush()
+        global_bcm_map = None
         
-        local_bcm_map = project_to_2d(bcm_coords, dmo.masses, args.grid)
-        if rank == 0:
-            global_bcm_map = np.zeros((args.grid, args.grid), dtype=np.float32)
+        if not getattr(args, 'skip_2d_maps', False):
+            if rank == 0:
+                print(f"\n  Generating {model_name} map...")
+                sys.stdout.flush()
+            
+            local_bcm_map = project_to_2d(bcm_coords, dmo.masses, args.grid)
+            if rank == 0:
+                global_bcm_map = np.zeros((args.grid, args.grid), dtype=np.float32)
+            else:
+                global_bcm_map = None
+            comm.Reduce(local_bcm_map, global_bcm_map, op=MPI.SUM, root=0)
+            del local_bcm_map
+            
+            if rank == 0:
+                # Save BCM map
+                bcm_file = os.path.join(snap_dir, 'projected', f'{model_name}.npz')
+                np.savez_compressed(bcm_file, field=global_bcm_map, box_size=BOX_SIZE,
+                                   grid_resolution=args.grid, snapshot=args.snap,
+                                   model=model_name)
+                print(f"    {model_name} map saved: {bcm_file}")
+                del global_bcm_map
         else:
-            global_bcm_map = None
-        comm.Reduce(local_bcm_map, global_bcm_map, op=MPI.SUM, root=0)
-        del local_bcm_map
-        
-        if rank == 0:
-            # Save BCM map
-            bcm_file = os.path.join(snap_dir, 'projected', f'{model_name}.npz')
-            np.savez_compressed(bcm_file, field=global_bcm_map, box_size=BOX_SIZE,
-                               grid_resolution=args.grid, snapshot=args.snap,
-                               model=model_name)
-            print(f"    {model_name} map saved: {bcm_file}")
-            del global_bcm_map
+            if rank == 0:
+                print(f"\n  Skipping {model_name} 2D map generation (--skip-2d-maps)")
+                sys.stdout.flush()
         
         # Store results for this model
         all_bcm_results[model_name] = {
@@ -1207,14 +1668,18 @@ def run_bcm_pipeline(args):
         gc.collect()
     
     # ========================================================================
-    # Save profiles and statistics for all models
+    # Save profiles and statistics for all models (skip if --skip-profiles)
     # ========================================================================
-    if rank == 0:
+    if rank == 0 and not getattr(args, 'skip_profiles', False):
         print("\n[4/5] Saving results...")
         
         # Save profiles (one file per model)
         for model_name in models_to_run:
             result = all_bcm_results[model_name]
+            
+            # Skip if profiles weren't computed
+            if result['profiles'] is None:
+                continue
             
             profile_file = os.path.join(output_dir, 'profiles', f'profiles_{model_name}_snap{args.snap:03d}.h5')
             with h5py.File(profile_file, 'w') as f:
@@ -1268,38 +1733,43 @@ def run_bcm_pipeline(args):
             print(f"    {model_name} profiles saved: {profile_file}")
             print(f"      - Individual profiles: {n_halos} halos × {n_radial_bins} radial bins")
         
-        # Save statistics (one file with all models)
-        stats_file = os.path.join(output_dir, 'analysis', f'bcm_halo_statistics_snap{args.snap:03d}.h5')
-        with h5py.File(stats_file, 'w') as f:
-            f.attrs['snapshot'] = args.snap
-            f.attrs['redshift'] = z_snap
-            f.attrs['mass_min'] = args.mass_min
-            f.attrs['n_halos'] = n_halos
-            f.attrs['radii_r200'] = np.array(STATS_RADII_MULT)
-            f.attrs['sim_res'] = args.sim_res
-            f.attrs['epsilon_max'] = args.epsilon_max
-            f.attrs['bcm_models'] = ','.join(models_to_run)
-            
-            # Halo properties
-            f.create_dataset('log_masses', data=halo_log_masses.astype(np.float32))
-            f.create_dataset('positions', data=halo_positions.astype(np.float32))
-            f.create_dataset('radii', data=halo_radii.astype(np.float32))
-            
-            # BCM statistics for each model
-            for model_name in models_to_run:
-                result = all_bcm_results[model_name]
-                grp = f.create_group(model_name)
-                grp.create_dataset('m_bcm', data=result['stats'])
+        # Save statistics (one file with all models) - only if we have stats
+        has_stats = any(all_bcm_results[m]['stats'] is not None for m in models_to_run)
+        if has_stats:
+            stats_file = os.path.join(output_dir, 'analysis', f'bcm_halo_statistics_snap{args.snap:03d}.h5')
+            with h5py.File(stats_file, 'w') as f:
+                f.attrs['snapshot'] = args.snap
+                f.attrs['redshift'] = z_snap
+                f.attrs['mass_min'] = args.mass_min
+                f.attrs['n_halos'] = n_halos
+                f.attrs['radii_r200'] = np.array(STATS_RADII_MULT)
+                f.attrs['sim_res'] = args.sim_res
+                f.attrs['epsilon_max'] = args.epsilon_max
+                f.attrs['bcm_models'] = ','.join(models_to_run)
                 
-                # Store params
-                param_grp = grp.create_group('params')
-                for k, v in result['params'].items():
-                    try:
-                        param_grp.attrs[k] = v
-                    except TypeError:
-                        param_grp.attrs[k] = str(v)
-        
-        print(f"    Statistics saved: {stats_file}")
+                # Halo properties
+                f.create_dataset('log_masses', data=halo_log_masses.astype(np.float32))
+                f.create_dataset('positions', data=halo_positions.astype(np.float32))
+                f.create_dataset('radii', data=halo_radii.astype(np.float32))
+                
+                # BCM statistics for each model
+                for model_name in models_to_run:
+                    result = all_bcm_results[model_name]
+                    if result['stats'] is not None:
+                        grp = f.create_group(model_name)
+                        grp.create_dataset('m_bcm', data=result['stats'])
+                        
+                        # Store params
+                        param_grp = grp.create_group('params')
+                        for k, v in result['params'].items():
+                            try:
+                                param_grp.attrs[k] = v
+                            except TypeError:
+                                param_grp.attrs[k] = str(v)
+            
+            print(f"    Statistics saved: {stats_file}")
+    elif rank == 0:
+        print("\n[4/5] Skipping profile/stats saving (--skip-profiles)")
     
     # Cleanup
     dmo.free()
@@ -1430,7 +1900,7 @@ def main():
     parser = argparse.ArgumentParser(description='BCM pipeline for profiles, stats, maps, and lensplanes')
     parser.add_argument('--snap', type=int, required=True, help='Snapshot number')
     parser.add_argument('--sim-res', type=int, default=2500, choices=[625, 1250, 2500])
-    parser.add_argument('--mass-min', type=float, default=12.5,
+    parser.add_argument('--mass-min', type=float, default=12,
                         help='Minimum log10(M200c/Msun/h) for halo selection')
     parser.add_argument('--radius-mult', type=float, default=5.0,
                         help='Radius multiplier (×R200) for particle queries')
@@ -1442,10 +1912,21 @@ def main():
     # BCM arguments
     parser.add_argument('--epsilon-max', type=float, default=20.0,
                         help='Maximum displacement radius in units of R200')
-    parser.add_argument('--models', type=str, default='schneider19,schneider25,arico20',
+    parser.add_argument('--models', type=str, default=None,
                         help='Comma-separated list of BCM models to run. '
-                             'Available: schneider19, schneider25, arico20. '
-                             'Default: all three models.')
+                             'Available: schneider19, schneider25, arico20, '
+                             'schneider19_sharma, arico20_sharma, arico20_high_mass. '
+                             'Default: schneider19,schneider25,arico20')
+    parser.add_argument('--bcm-model', type=str, default=None,
+                        help='Single BCM model to run (alternative to --models). '
+                             'Available: schneider19, schneider25, arico20, '
+                             'schneider19_sharma, arico20_sharma.')
+    
+    # Pipeline control
+    parser.add_argument('--skip-profiles', action='store_true',
+                        help='Skip profile computation')
+    parser.add_argument('--skip-2d-maps', action='store_true',
+                        help='Skip 2D map generation')
     
     # Lensplane arguments
     parser.add_argument('--enable-lensplanes', action='store_true',
@@ -1454,6 +1935,12 @@ def main():
                         help='Grid resolution for lensplanes')
     
     args = parser.parse_args()
+    
+    # Handle model selection: --bcm-model takes precedence over --models
+    if args.bcm_model is not None:
+        args.models = args.bcm_model
+    elif args.models is None:
+        args.models = 'schneider19,schneider25,arico20'
     
     run_bcm_pipeline(args)
 

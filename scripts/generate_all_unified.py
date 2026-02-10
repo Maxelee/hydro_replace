@@ -866,6 +866,10 @@ def run_unified_pipeline(args):
     local_dmo_profiles = np.zeros((n_mass_bins, n_radial_bins), dtype=np.float64)
     local_dmo_counts = np.zeros((n_mass_bins, n_radial_bins), dtype=np.int64)
     
+    # Individual profiles for each halo (for later analysis)
+    local_dmo_individual_profiles = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    local_dmo_individual_mass = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    
     # Statistics at multiple radii
     n_stats_radii = len(STATS_RADII_MULT)
     local_dmo_stats = np.zeros((n_halos, n_stats_radii), dtype=np.float64)  # m_total at each radius
@@ -895,6 +899,10 @@ def run_unified_pipeline(args):
                 local_coords, local_masses, local_types, center, r200, RADIAL_BINS
             )
             
+            # Store individual profile for this halo
+            local_dmo_individual_profiles[i] = profile['density']
+            local_dmo_individual_mass[i] = profile['mass']
+            
             if 0 <= mass_bin < n_mass_bins:
                 local_dmo_profiles[mass_bin] += profile['density']
                 local_dmo_counts[mass_bin] += profile['count']
@@ -923,10 +931,14 @@ def run_unified_pipeline(args):
     global_dmo_profiles = np.zeros_like(local_dmo_profiles)
     global_dmo_counts = np.zeros_like(local_dmo_counts)
     global_dmo_stats = np.zeros_like(local_dmo_stats)
+    global_dmo_individual_profiles = np.zeros_like(local_dmo_individual_profiles)
+    global_dmo_individual_mass = np.zeros_like(local_dmo_individual_mass)
     
     comm.Reduce(local_dmo_profiles, global_dmo_profiles, op=MPI.SUM, root=0)
     comm.Reduce(local_dmo_counts, global_dmo_counts, op=MPI.SUM, root=0)
     comm.Reduce(local_dmo_stats, global_dmo_stats, op=MPI.SUM, root=0)
+    comm.Reduce(local_dmo_individual_profiles, global_dmo_individual_profiles, op=MPI.SUM, root=0)
+    comm.Reduce(local_dmo_individual_mass, global_dmo_individual_mass, op=MPI.SUM, root=0)
     
     # Generate DMO maps
     if rank == 0:
@@ -986,6 +998,13 @@ def run_unified_pipeline(args):
     local_hydro_profiles_gas = np.zeros((n_mass_bins, n_radial_bins), dtype=np.float64)
     local_hydro_profiles_stars = np.zeros((n_mass_bins, n_radial_bins), dtype=np.float64)
     
+    # Individual profiles for each halo (for later analysis)
+    local_hydro_individual_profiles = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    local_hydro_individual_mass = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    local_hydro_individual_profiles_dm = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    local_hydro_individual_profiles_gas = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    local_hydro_individual_profiles_stars = np.zeros((n_halos, n_radial_bins), dtype=np.float64)
+    
     # Statistics - only store masses, compute fractions after MPI reduce
     local_hydro_stats = {
         'm_total': np.zeros((n_halos, n_stats_radii), dtype=np.float64),
@@ -1029,6 +1048,13 @@ def run_unified_pipeline(args):
                 local_coords, local_masses, local_types, center_hydro, r200_hydro, RADIAL_BINS
             )
             
+            # Store individual profile for this halo
+            local_hydro_individual_profiles[i] = profile['density']
+            local_hydro_individual_mass[i] = profile['mass']
+            local_hydro_individual_profiles_dm[i] = profile['density_dm']
+            local_hydro_individual_profiles_gas[i] = profile['density_gas']
+            local_hydro_individual_profiles_stars[i] = profile['density_stars']
+            
             if 0 <= mass_bin < n_mass_bins:
                 local_hydro_profiles[mass_bin] += profile['density']
                 local_hydro_counts[mass_bin] += profile['count']
@@ -1067,6 +1093,19 @@ def run_unified_pipeline(args):
     comm.Reduce(local_hydro_profiles_dm, global_hydro_profiles_dm, op=MPI.SUM, root=0)
     comm.Reduce(local_hydro_profiles_gas, global_hydro_profiles_gas, op=MPI.SUM, root=0)
     comm.Reduce(local_hydro_profiles_stars, global_hydro_profiles_stars, op=MPI.SUM, root=0)
+    
+    # Reduce individual profiles
+    global_hydro_individual_profiles = np.zeros_like(local_hydro_individual_profiles)
+    global_hydro_individual_mass = np.zeros_like(local_hydro_individual_mass)
+    global_hydro_individual_profiles_dm = np.zeros_like(local_hydro_individual_profiles_dm)
+    global_hydro_individual_profiles_gas = np.zeros_like(local_hydro_individual_profiles_gas)
+    global_hydro_individual_profiles_stars = np.zeros_like(local_hydro_individual_profiles_stars)
+    
+    comm.Reduce(local_hydro_individual_profiles, global_hydro_individual_profiles, op=MPI.SUM, root=0)
+    comm.Reduce(local_hydro_individual_mass, global_hydro_individual_mass, op=MPI.SUM, root=0)
+    comm.Reduce(local_hydro_individual_profiles_dm, global_hydro_individual_profiles_dm, op=MPI.SUM, root=0)
+    comm.Reduce(local_hydro_individual_profiles_gas, global_hydro_individual_profiles_gas, op=MPI.SUM, root=0)
+    comm.Reduce(local_hydro_individual_profiles_stars, global_hydro_individual_profiles_stars, op=MPI.SUM, root=0)
     
     global_hydro_stats = {}
     for key in local_hydro_stats:
@@ -1135,6 +1174,9 @@ def run_unified_pipeline(args):
     if rank == 0:
         print("\n[5/7] Saving profiles...")
         
+        # Compute number of halos per mass bin (for averaging)
+        n_halos_per_bin = np.array([np.sum(mass_bin_indices == mb) for mb in range(n_mass_bins)])
+        
         profile_file = os.path.join(output_dir, 'profiles', f'profiles_snap{args.snap:03d}.h5')
         with h5py.File(profile_file, 'w') as f:
             f.attrs['snapshot'] = args.snap
@@ -1143,21 +1185,53 @@ def run_unified_pipeline(args):
             f.attrs['radial_bins'] = RADIAL_BINS
             f.attrs['mass_bin_edges'] = MASS_BIN_EDGES
             f.attrs['box_size'] = BOX_SIZE
+            f.attrs['n_halos'] = n_halos
             
-            # DMO profiles
+            # DMO stacked profiles (summed across all halos in each mass bin)
             f.create_dataset('stacked_dmo', data=global_dmo_profiles)
             f.create_dataset('counts_dmo', data=global_dmo_counts)
             
-            # Hydro profiles (total)
+            # Hydro stacked profiles (total)
             f.create_dataset('stacked_hydro', data=global_hydro_profiles)
             f.create_dataset('counts_hydro', data=global_hydro_counts)
             
-            # Hydro profiles (by particle type)
+            # Hydro stacked profiles (by particle type)
             f.create_dataset('stacked_hydro_dm', data=global_hydro_profiles_dm)
             f.create_dataset('stacked_hydro_gas', data=global_hydro_profiles_gas)
             f.create_dataset('stacked_hydro_stars', data=global_hydro_profiles_stars)
+            
+            # Number of halos per mass bin (for computing averages)
+            f.create_dataset('n_halos_per_bin', data=n_halos_per_bin)
+            
+            # Individual profiles for each halo (n_halos, n_radial_bins)
+            # DMO individual profiles
+            f.create_dataset('individual_dmo_density', data=global_dmo_individual_profiles.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            f.create_dataset('individual_dmo_mass', data=global_dmo_individual_mass.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            
+            # Hydro individual profiles (total and by component)
+            f.create_dataset('individual_hydro_density', data=global_hydro_individual_profiles.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            f.create_dataset('individual_hydro_mass', data=global_hydro_individual_mass.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            f.create_dataset('individual_hydro_density_dm', data=global_hydro_individual_profiles_dm.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            f.create_dataset('individual_hydro_density_gas', data=global_hydro_individual_profiles_gas.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            f.create_dataset('individual_hydro_density_stars', data=global_hydro_individual_profiles_stars.astype(np.float32),
+                           compression='gzip', compression_opts=4)
+            
+            # Halo properties (for reference with individual profiles)
+            f.create_dataset('halo_log_masses', data=halo_log_masses.astype(np.float32))
+            f.create_dataset('halo_radii', data=halo_radii.astype(np.float32))
+            f.create_dataset('halo_positions', data=halo_positions.astype(np.float32))
+            f.create_dataset('halo_hydro_positions', data=halo_hydro_positions.astype(np.float32))
+            f.create_dataset('halo_hydro_radii', data=halo_hydro_radii.astype(np.float32))
+            f.create_dataset('mass_bin_indices', data=mass_bin_indices.astype(np.int32))
         
         print(f"    Saved: {profile_file}")
+        print(f"      - Individual profiles: {n_halos} halos × {n_radial_bins} radial bins")
     
     # ========================================================================
     # Save statistics (matching original format)
@@ -1670,7 +1744,7 @@ def main():
     parser = argparse.ArgumentParser(description='Unified pipeline for profiles, stats, maps, and lensplanes')
     parser.add_argument('--snap', type=int, required=True, help='Snapshot number')
     parser.add_argument('--sim-res', type=int, default=2500, choices=[625, 1250, 2500])
-    parser.add_argument('--mass-min', type=float, default=12.5,
+    parser.add_argument('--mass-min', type=float, default=12,
                         help='Minimum log10(M200c/Msun/h) for halo selection')
     parser.add_argument('--radius-mult', type=float, default=5.0,
                         help='Radius multiplier (×R200) for particle queries')
