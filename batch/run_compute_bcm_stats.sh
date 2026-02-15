@@ -73,7 +73,7 @@ echo "========================================"
 echo ""
 
 # Run the script with error checking
-if ! srun -n 64 python scripts/compute_all_stats.py --model "$MODEL" --no-bispectrum; then
+if ! srun -n 64 python scripts/compute_all_stats.py --model "$MODEL" --bcm --no-bispectrum; then
     echo ""
     echo "========================================"
     echo "ERROR: Python script failed with exit code $?"

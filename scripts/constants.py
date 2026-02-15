@@ -4,9 +4,14 @@ Constants and configuration for the hydro_replace statistics pipeline.
 
 import numpy as np
 
-# Data paths
-LP_BASE = '/mnt/home/mlee1/ceph/hydro_replace_LP_bcm/L205n2500TNG'
-RT_BASE = '/mnt/home/mlee1/ceph/hydro_replace_RT_bcm/L205n2500TNG'
+# Data paths — Replace models
+LP_BASE = '/mnt/home/mlee1/ceph/hydro_replace_LP/L205n2500TNG'
+RT_BASE = '/mnt/home/mlee1/ceph/hydro_replace_RT/L205n2500TNG'
+
+# Data paths — BCM models
+LP_BASE_BCM = '/mnt/home/mlee1/ceph/hydro_replace_LP_bcm/L205n2500TNG'
+RT_BASE_BCM = '/mnt/home/mlee1/ceph/hydro_replace_RT_bcm/L205n2500TNG'
+
 STATS_BASE = '/mnt/home/mlee1/ceph/hydro_replace_stats'
 
 # Box and grid parameters
@@ -176,3 +181,25 @@ def get_discrete_models():
             models.append(model_name)
     
     return models
+
+
+# =============================================================================
+# Survey noise parameters
+# =============================================================================
+SURVEY_PARAMS = {
+    'LSST': {
+        'sigma_e': 0.3,       # Intrinsic ellipticity dispersion (per component)
+        'n_gal': 30.0,        # Galaxy number density (per arcmin^2)
+        'area_deg2': 18000.0, # Survey area (deg^2) -- metadata only
+    },
+    'DES': {
+        'sigma_e': 0.3,       # Intrinsic ellipticity dispersion (per component)
+        'n_gal': 10.0,        # Galaxy number density (per arcmin^2)
+        'area_deg2': 5000.0,  # Survey area (deg^2) -- metadata only
+    },
+}
+
+# Smoothing scales to explore (theta_G in arcmin)
+# The smoothing kernel is W(theta) = (1/(pi*theta_G^2)) * exp(-theta^2/theta_G^2)
+# which is a Gaussian with sigma = theta_G / sqrt(2)
+SMOOTHING_SCALES = [1.0, 2.0, 3.0]

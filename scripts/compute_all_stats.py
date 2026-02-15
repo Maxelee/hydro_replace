@@ -27,17 +27,23 @@ from mpi4py import MPI
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from constants import (
-    LP_BASE, RT_BASE, STATS_BASE, N_LP, N_RUNS, N_LENSPLANES,
+    LP_BASE, RT_BASE, LP_BASE_BCM, RT_BASE_BCM,
+    STATS_BASE, N_LP, N_RUNS, N_LENSPLANES,
     SNAPSHOT_ORDER, SNAPSHOT_REDSHIFTS, KAPPA_TARGETS, KAPPA_REDSHIFTS,
     SN_BINS, SMOOTHING_ARCMIN, PIXEL_SCALE_ARCMIN, BOX_SIZE, FOV_DEG,
-    WST_J, WST_Q, WST_MOMENTS, BISPEC_ELL_BINS, BISPEC_CONFIGS
+    WST_J, WST_Q, WST_MOMENTS, BISPEC_ELL_BINS, BISPEC_CONFIGS,
+    SURVEY_PARAMS
 )
 from stats_utils import (
     load_kappa, read_lensplane, compute_Pk_2d, compute_Cl,
     smooth_kappa, compute_peaks, compute_minima, compute_pdf,
     compute_minkowski_functionals, compute_wavelet_scattering_2d,
-    compute_all_bispectra
+    compute_all_bispectra, add_shape_noise, _make_noise_seed
 )
+
+# Active data paths (set by --bcm flag)
+_LP_BASE = LP_BASE
+_RT_BASE = RT_BASE
 
 # Global flags for which statistics to compute (set by argparse)
 COMPUTE_FLAGS = {
@@ -52,9 +58,10 @@ COMPUTE_FLAGS = {
 }
 
 
-def load_dmo_rms():
+def load_dmo_rms(suffix=''):
     """Load pre-computed DMO RMS values."""
-    rms_path = os.path.join(STATS_BASE, 'dmo_rms.h5')
+    filename = f'dmo_rms{suffix}.h5' if suffix else 'dmo_rms.h5'
+    rms_path = os.path.join(STATS_BASE, filename)
     if not os.path.exists(rms_path):
         raise FileNotFoundError(
             f"DMO RMS file not found: {rms_path}\n"
@@ -72,7 +79,7 @@ def get_lensplane_path(model, plane_idx, lp):
     Lensplanes are organized as: /LP_BASE/model/LP_XX/lenspotYY.dat
     where YY is the plane index (0-39, 40 total lensplanes per LP)
     """
-    lp_dir = os.path.join(LP_BASE, model, f'LP_{lp:02d}')
+    lp_dir = os.path.join(_LP_BASE, model, f'LP_{lp:02d}')
     lenspot_file = f'lenspot{plane_idx:02d}.dat'
     
     return os.path.join(lp_dir, lenspot_file)
@@ -84,7 +91,7 @@ def get_kappa_path(model, lp, run, kappa_num):
     run_str = f"run{run:03d}"
     kappa_file = f"kappa{kappa_num:02d}.dat"
     
-    return os.path.join(RT_BASE, model, lp_str, run_str, kappa_file)
+    return os.path.join(_RT_BASE, model, lp_str, run_str, kappa_file)
 
 
 def compute_density_stats(model, comm):
@@ -189,7 +196,7 @@ def compute_density_stats(model, comm):
     return None, None, None
 
 
-def compute_convergence_stats(model, dmo_rms, comm):
+def compute_convergence_stats(model, dmo_rms, comm, survey_params=None, smoothing_scale=0.0):
     """
     Compute convergence statistics (C_ℓ, peaks, minima, PDF, MF, WST, bispectrum) from kappa maps.
     
@@ -197,8 +204,17 @@ def compute_convergence_stats(model, dmo_rms, comm):
     
     Parameters
     ----------
+    model : str
+        Model name
     dmo_rms : np.ndarray
         Pre-computed DMO RMS values, shape (N_LP, N_RUNS, N_z)
+    comm : MPI communicator
+    survey_params : dict, optional
+        Survey noise parameters with keys 'sigma_e', 'n_gal'.
+        If None, no noise is added.
+    smoothing_scale : float, optional
+        Smoothing kernel parameter theta_G in arcmin.
+        The Gaussian sigma is theta_G / sqrt(2).  If 0, uses SMOOTHING_ARCMIN.
     
     Returns
     -------
@@ -243,6 +259,15 @@ def compute_convergence_stats(model, dmo_rms, comm):
             # Load convergence map
             kappa = load_kappa(kappa_path)
             
+            # Add shape noise if survey specified
+            if survey_params is not None:
+                seed = _make_noise_seed(model, lp, run, z_idx,
+                                        survey_params.get('survey_name', ''))
+                rng = np.random.default_rng(seed)
+                kappa = add_shape_noise(kappa, survey_params['sigma_e'],
+                                        survey_params['n_gal'],
+                                        PIXEL_SCALE_ARCMIN, rng)
+            
             # Get DMO RMS for this realization
             rms = dmo_rms[lp, run - 1, z_idx]
             if np.isnan(rms):
@@ -257,7 +282,17 @@ def compute_convergence_stats(model, dmo_rms, comm):
             
             # Smooth for other statistics (needed if any threshold-based stat is enabled)
             need_smooth = any(COMPUTE_FLAGS.get(k, True) for k in ['peaks', 'minima', 'pdf', 'minkowski', 'wst'])
-            kappa_smooth = smooth_kappa(kappa, SMOOTHING_ARCMIN, PIXEL_SCALE_ARCMIN) if need_smooth else None
+            if need_smooth:
+                # Use custom smoothing scale if specified
+                # User kernel: W(theta) = (1/(pi*theta_G^2)) exp(-theta^2/theta_G^2)
+                # Gaussian sigma = theta_G / sqrt(2)
+                if smoothing_scale > 0:
+                    smooth_sigma_arcmin = smoothing_scale / np.sqrt(2)
+                else:
+                    smooth_sigma_arcmin = SMOOTHING_ARCMIN
+                kappa_smooth = smooth_kappa(kappa, smooth_sigma_arcmin, PIXEL_SCALE_ARCMIN)
+            else:
+                kappa_smooth = None
             
             # Compute WL statistics (if enabled)
             peaks = compute_peaks(kappa_smooth, rms, SN_BINS) if COMPUTE_FLAGS.get('peaks', True) and kappa_smooth is not None else None
@@ -414,12 +449,13 @@ def compute_convergence_stats(model, dmo_rms, comm):
     return None
 
 
-def save_results(model, Pk_data, k_bins, mass_data, conv_results):
+def save_results(model, Pk_data, k_bins, mass_data, conv_results, suffix=''):
     """Save all statistics to HDF5. Only saves computed statistics."""
     output_dir = os.path.join(STATS_BASE, model)
     os.makedirs(output_dir, exist_ok=True)
     
-    output_path = os.path.join(output_dir, 'stats.h5')
+    filename = f'stats{suffix}.h5' if suffix else 'stats.h5'
+    output_path = os.path.join(output_dir, filename)
     
     with h5py.File(output_path, 'w') as f:
         # Density statistics (if computed)
@@ -489,6 +525,7 @@ def save_results(model, Pk_data, k_bins, mass_data, conv_results):
         f.attrs['smoothing_arcmin'] = SMOOTHING_ARCMIN
         f.attrs['BOX_SIZE'] = BOX_SIZE
         f.attrs['FOV_DEG'] = FOV_DEG
+        f.attrs['output_suffix'] = suffix
         
         # Record which statistics were computed
         f.attrs['computed_density'] = COMPUTE_FLAGS['density']
@@ -549,6 +586,13 @@ def main():
     parser.add_argument('--no-bispectrum', action='store_false', dest='bispectrum',
                         help='Skip bispectrum computation (saves significant time)')
     
+    parser.add_argument('--bcm', action='store_true', default=False,
+                        help='Use BCM data paths instead of Replace paths')
+    parser.add_argument('--survey', type=str, default=None, choices=['LSST', 'DES'],
+                        help='Survey noise model (LSST or DES). If not set, no noise is added.')
+    parser.add_argument('--smoothing-scale', type=float, default=0.0,
+                        help='Smoothing kernel theta_G in arcmin (0 = use default SMOOTHING_ARCMIN)')
+    
     args = parser.parse_args()
     
     # Update global flags
@@ -562,6 +606,31 @@ def main():
     COMPUTE_FLAGS['wst'] = args.wst
     COMPUTE_FLAGS['bispectrum'] = args.bispectrum
     
+    # Set data paths based on --bcm flag
+    global _LP_BASE, _RT_BASE
+    if args.bcm:
+        _LP_BASE = LP_BASE_BCM
+        _RT_BASE = RT_BASE_BCM
+    else:
+        _LP_BASE = LP_BASE
+        _RT_BASE = RT_BASE
+    
+    # Survey noise configuration
+    survey_params = None
+    survey_name = ''
+    if args.survey:
+        survey_params = dict(SURVEY_PARAMS[args.survey])  # copy
+        survey_params['survey_name'] = args.survey
+        survey_name = args.survey
+    smoothing_scale = args.smoothing_scale
+    
+    # Build filename suffix for noisy/smoothed stats
+    suffix = ''
+    if survey_name:
+        suffix += f'_{survey_name}'
+    if smoothing_scale > 0:
+        suffix += f'_{smoothing_scale:.1f}arcmin'
+    
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -571,6 +640,8 @@ def main():
         print(f"Computing statistics for model: {args.model}")
         print("=" * 80)
         print(f"MPI size: {size}")
+        print(f"Data paths: LP={_LP_BASE}")
+        print(f"            RT={_RT_BASE}")
         print()
         # Show which statistics will be computed
         enabled = [k for k, v in COMPUTE_FLAGS.items() if v]
@@ -578,12 +649,20 @@ def main():
         print(f"Enabled statistics: {', '.join(enabled)}")
         if disabled:
             print(f"Disabled statistics: {', '.join(disabled)}")
+        if survey_name:
+            print(f"Survey noise: {survey_name} (sigma_e={survey_params['sigma_e']}, "
+                  f"n_gal={survey_params['n_gal']} arcmin^-2)")
+        if smoothing_scale > 0:
+            print(f"Smoothing: theta_G={smoothing_scale:.1f} arcmin "
+                  f"(Gaussian sigma={smoothing_scale / np.sqrt(2):.3f} arcmin)")
+        if suffix:
+            print(f"Output suffix: {suffix}")
         print()
     
     # Load DMO RMS
     if rank == 0:
         print("Loading DMO RMS...")
-        dmo_rms = load_dmo_rms()
+        dmo_rms = load_dmo_rms(suffix=suffix)
         print(f"DMO RMS loaded. Shape: {dmo_rms.shape}")
         print()
     else:
@@ -603,7 +682,9 @@ def main():
     # Compute convergence statistics (if any are enabled)
     conv_stats_enabled = any(COMPUTE_FLAGS[k] for k in ['Cl', 'peaks', 'minima', 'pdf', 'minkowski', 'wst', 'bispectrum'])
     if conv_stats_enabled:
-        conv_results = compute_convergence_stats(args.model, dmo_rms, comm)
+        conv_results = compute_convergence_stats(args.model, dmo_rms, comm,
+                                                  survey_params=survey_params,
+                                                  smoothing_scale=smoothing_scale)
     else:
         conv_results = None
         if rank == 0:
@@ -611,7 +692,7 @@ def main():
     
     # Save results
     if rank == 0:
-        save_results(args.model, Pk_data, k_bins, mass_data, conv_results)
+        save_results(args.model, Pk_data, k_bins, mass_data, conv_results, suffix=suffix)
         print()
         print("=" * 80)
         print(f"Statistics computation complete for {args.model}!")

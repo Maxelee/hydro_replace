@@ -621,6 +621,54 @@ def smooth_kappa(kappa, smoothing_arcmin, pixel_scale_arcmin):
     return gaussian_filter(kappa, sigma=sigma_pix)
 
 
+def add_shape_noise(kappa, sigma_e, n_gal, pixel_scale_arcmin, rng=None):
+    """
+    Add Gaussian shape noise to a convergence map.
+
+    The noise variance per pixel is:
+        sigma_noise^2 = sigma_e^2 / (2 * n_gal * A_pix)
+
+    Parameters
+    ----------
+    kappa : np.ndarray
+        2D convergence map
+    sigma_e : float
+        Intrinsic ellipticity dispersion (per component)
+    n_gal : float
+        Galaxy number density (per arcmin^2)
+    pixel_scale_arcmin : float
+        Pixel scale in arcmin per pixel
+    rng : np.random.Generator, optional
+        Random number generator for reproducibility
+
+    Returns
+    -------
+    np.ndarray
+        Noisy convergence map
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    A_pix = pixel_scale_arcmin ** 2  # arcmin^2
+    noise_var = sigma_e**2 / (2.0 * n_gal * A_pix)
+    noise_std = np.sqrt(noise_var)
+
+    noise = rng.normal(0.0, noise_std, size=kappa.shape).astype(kappa.dtype)
+    return kappa + noise
+
+
+def _make_noise_seed(model, lp, run, z_idx, survey=''):
+    """
+    Create a deterministic seed for shape noise generation.
+
+    Ensures reproducibility: same (model, realization, survey) always
+    gets the same noise, but different models/surveys get different noise.
+    """
+    import hashlib
+    key = f"{model}_{lp}_{run}_{z_idx}_{survey}"
+    return int(hashlib.md5(key.encode()).hexdigest()[:8], 16)
+
+
 def compute_peaks(kappa_smooth, rms, sn_bins):
     """
     Compute peak counts in S/N bins.

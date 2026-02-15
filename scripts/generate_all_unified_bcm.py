@@ -1097,7 +1097,7 @@ def compute_periodic_distance(dx, box_size):
     return dx
 
 
-def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min, M_max, cosmo_params, epsilon_max, comm):
+def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min, M_max, cosmo_params, epsilon_max, comm, bcm_model_name=None):
     """
     Apply BCM displacements using BaryonForge's displacement() method.
     
@@ -1110,11 +1110,12 @@ def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min
         particles: DistributedParticles object with DMO particles
         halos: dict with 'masses', 'positions', 'radii'
         z_snap: snapshot redshift
-        M_min: minimum halo mass for interpolator
-        M_max: maximum halo mass for interpolator
+        M_min: minimum halo mass for interpolator (Msun/h)
+        M_max: maximum halo mass for interpolator (Msun/h)
         cosmo_params: dict with cosmology parameters
         epsilon_max: maximum displacement radius in units of R200
         comm: MPI communicator
+        bcm_model_name: name of BCM model (for looking up Rdelta_sampling etc.)
     
     Returns:
         bcm_coords: (N, 3) array of BCM-displaced coordinates
@@ -1124,12 +1125,29 @@ def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min
         t0 = time.time()
     
     # Setup the interpolator for this snapshot's redshift range
+    # Look up Rdelta_sampling from BCM_MODELS config (critical for Arico20
+    # which has sharp features at fixed r/R_delta)
+    rdelta_sampling = False
+    if bcm_model_name is not None and bcm_model_name in BCM_MODELS:
+        rdelta_sampling = BCM_MODELS[bcm_model_name].get('Rdelta_sampling', False)
+    
+    h = cosmo_params['h']
+    # Convert M_min/M_max from Msun/h to Msun for BaryonForge
+    M_min_msun = M_min / h
+    M_max_msun = M_max / h
+    
     baryons.setup_interpolator(
         z_min=0, z_max=3,
         z_linear_sampling=True,
         N_samples_R=10000,
+        Rdelta_sampling=rdelta_sampling,
+        M_min=M_min_msun,
+        M_max=M_max_msun,
         verbose=(rank == 0)
     )
+    
+    if rank == 0:
+        print(f"    Rdelta_sampling={rdelta_sampling}, M_min={M_min_msun:.2e} Msun, M_max={M_max_msun:.2e} Msun")
     
     if rank == 0:
         print(f"    Interpolator setup time: {time.time()-t0:.1f}s")
@@ -1158,6 +1176,7 @@ def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min
     
     # Loop over halos and compute displacements
     n_displaced = 0
+    n_nan_total = 0
     for j in range(n_halos):
         halo_pos = halos['positions'][j]
         halo_r200 = halos['radii'][j]
@@ -1211,9 +1230,15 @@ def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min
             
             # Get displacement from BaryonForge (in comoving Mpc)
             # displacement(r, M, a) returns radial displacement
-            offset = baryons.displacement(r_mpc, halo_mass, a_snap)
+            # BaryonForge expects M in Msun (not Msun/h), so divide by h
+            halo_mass_msun = halo_mass / h
+            offset = baryons.displacement(r_mpc, halo_mass_msun, a_snap)
             
-            # Handle NaN/Inf values
+            # Handle NaN/Inf values (log count for diagnostics)
+            nan_mask = ~np.isfinite(offset)
+            n_nan = np.sum(nan_mask)
+            if n_nan > 0:
+                n_nan_total += n_nan
             offset = np.where(np.isfinite(offset), offset, 0.0)
             
             # Convert displacement back to Mpc/h
@@ -1241,6 +1266,8 @@ def apply_bcm_displacements_baryonforge(baryons, particles, halos, z_snap, M_min
     
     if rank == 0:
         print(f"    Displaced {n_displaced:,} particle instances")
+        if n_nan_total > 0:
+            print(f"    WARNING: {n_nan_total:,} NaN/Inf displacements replaced with 0 (out-of-table-range)")
         print(f"    Displacement calculation time: {time.time()-t0:.1f}s")
     
     return bcm_coords.astype(np.float32)
@@ -1511,7 +1538,8 @@ def run_bcm_pipeline(args):
             M_min=10**args.mass_min, M_max=1e16,
             cosmo_params=TNG_COSMOLOGY,
             epsilon_max=args.epsilon_max,
-            comm=comm
+            comm=comm,
+            bcm_model_name=args.bcm_model
         )
         
         # Sanity check: verify BCM coords have same shape as DMO coords
